@@ -39,10 +39,10 @@ export const DecisionCard = () => {
       <div className="relative space-y-6">
         {/* Vertical Timeline Line */}
         <div className="absolute left-[7px] top-2 bottom-2 w-px bg-zinc-800" />
-
-        {items.map((decision, index) => (decision = decisions[index], 
+          {decisions.map((decision, index) => (
           <motion.div
             key={decision.id}
+
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.8 + index * 0.1 }}
