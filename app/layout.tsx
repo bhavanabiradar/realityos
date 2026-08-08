@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { AppearanceProvider } from "@/components/providers/AppearanceProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -15,17 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-black text-white antialiased`}>
-        {/* Persistent Background Mesh */}
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px] animate-mesh" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/20 blur-[120px] animate-mesh [animation-delay:2s]" />
-        </div>
-        
-        <div className="relative z-10">
-          {children}
-        </div>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} antialiased`}>
+        <AppearanceProvider>
+          <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full opacity-70 blur-[120px] animate-mesh" style={{ background: "var(--glow)" }} />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-70 blur-[120px] animate-mesh [animation-delay:2s]" style={{ background: "var(--secondary)" }} />
+          </div>
+
+          <div className="relative z-10">{children}</div>
+        </AppearanceProvider>
       </body>
     </html>
   );

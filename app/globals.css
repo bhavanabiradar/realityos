@@ -3,49 +3,122 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 0, 0, 0;
-  --background-end-rgb: 0, 0, 0;
+  --background: #050816;
+  --foreground: #e2e8f0;
+  --card: #0f172a;
+  --card-foreground: #e2e8f0;
+  --sidebar: #090d18;
+  --primary: #60a5fa;
+  --primary-foreground: #f8fafc;
+  --secondary: #a78bfa;
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, 0.2);
+  --glow: rgba(96, 165, 250, 0.35);
+  --density-scale: 1;
+}
+
+html {
+  background: var(--background);
+  color: var(--foreground);
+  scroll-behavior: smooth;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-start-rgb));
+  position: relative;
+  min-height: 100vh;
+  color: var(--foreground);
+  background: var(--background);
   overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Custom Glass Scrollbar */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(circle at top left, rgba(96, 165, 250, 0.15), transparent 35%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.04));
+}
+
+html[data-background-style="solid"] body::before {
+  opacity: 0;
+}
+
+html[data-background-style="gradient"] body::before {
+  opacity: 1;
+}
+
+html[data-background-style="aurora"] body::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(96, 165, 250, 0.18), transparent 18%),
+    radial-gradient(circle at 85% 35%, rgba(167, 139, 250, 0.18), transparent 20%),
+    radial-gradient(circle at 50% 80%, rgba(45, 212, 191, 0.14), transparent 17%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.05));
+}
+
+html[data-background-style="glass"] body::before {
+  opacity: 1;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+    rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+html[data-density="compact"] {
+  --density-scale: 0.85;
+}
+
+html.reduced-motion *,
+html.reduced-motion *::before,
+html.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html.reduced-motion .animate-mesh {
+  animation: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(15, 23, 42, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 10px;
-  backdrop-filter: blur(5px);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(148, 163, 184, 0.4);
 }
 
-/* Glassmorphism Utility */
 .glass-morphism {
-  background: rgba(23, 23, 23, 0.4);
+  background: rgba(15, 23, 42, 0.3);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
 }
 
-/* Mesh Background Animation */
 @keyframes mesh-gradient {
   0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
+  33% { transform: translate(30px, -50px) scale(1.08); }
+  66% { transform: translate(-22px, 18px) scale(0.92); }
   100% { transform: translate(0, 0) scale(1); }
 }
 
