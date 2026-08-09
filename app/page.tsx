@@ -12,6 +12,7 @@ import { EventCard } from '@/components/dashboard/EventCard';
 import { MemoryGrid } from '@/components/dashboard/MemoryGrid';
 import { DecisionCard } from '@/components/dashboard/DecisionCard';
 import { DocsCard } from '@/components/dashboard/DocsCard';
+import RealityCommandCenter from '@/components/dashboard/RealityCommandCenter';
 
 export default function DashboardPage() {
   return (
