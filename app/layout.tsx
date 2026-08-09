@@ -24,7 +24,7 @@ export default function RootLayout({
             <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-70 blur-[120px] animate-mesh [animation-delay:2s]" style={{ background: "var(--secondary)" }} />
           </div>
 
-          <div className="relative z-10">{children}</div>
+          <div className="relative z-10 isolate">{children}</div>
         </AppearanceProvider>
       </body>
     </html>

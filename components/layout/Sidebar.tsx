@@ -1,8 +1,7 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Home,
@@ -18,24 +17,61 @@ import { cn } from '@/lib/utils';
 import { useAppearance } from '@/components/providers/AppearanceProvider';
 
 const navItems = [
-  { icon: Home, label: "Home", id: "home" },
-  { icon: MessageSquare, label: "AI Chat", id: "chat" },
-  { icon: Brain, label: "Memory", id: "memory" },
-  { icon: FileText, label: "Documents", id: "docs" },
-  { icon: Calendar, label: "Planner", id: "planner" },
-  { icon: Target, label: "Decisions", id: "decisions" },
-  { icon: AlertCircle, label: "Emergency", id: "emergency" },
+  { icon: Home, label: "Home", id: "home", href: "/dashboard" },
+  { icon: MessageSquare, label: "AI Chat", id: "chat", href: "/ai-chat" },
+  { icon: Brain, label: "Memory", id: "memory", href: "/memory" },
+  { icon: FileText, label: "Documents", id: "docs", href: "/documents" },
+  { icon: Calendar, label: "Planner", id: "planner", href: "/planner" },
+  { icon: Target, label: "Decisions", id: "decisions", href: "/decisions" },
+  { icon: AlertCircle, label: "Emergency", id: "emergency", href: "/emergency" },
 ];
 
-export const Sidebar = ({ activeTab = "home" }: { activeTab?: string }) => {
+export const Sidebar = ({ activeTab }: { activeTab?: string }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const { settings } = useAppearance();
-  const isSettingsActive = pathname?.startsWith('/settings');
+  const currentPath = pathname ?? "/";
+
+  const getIsActive = (itemId: string, href: string) => {
+    if (itemId === 'home') {
+      return currentPath === '/' || currentPath === '/dashboard' || currentPath === href;
+    }
+
+    if (itemId === 'chat') {
+      return currentPath === '/ai-chat';
+    }
+
+    if (itemId === 'memory') {
+      return currentPath === '/memory';
+    }
+
+    if (itemId === 'docs') {
+      return currentPath === '/documents';
+    }
+
+    if (itemId === 'planner') {
+      return currentPath === '/planner';
+    }
+
+    if (itemId === 'decisions') {
+      return currentPath === '/decisions';
+    }
+
+    if (itemId === 'emergency') {
+      return currentPath === '/emergency';
+    }
+
+    return currentPath === href;
+  };
+
+  const isSettingsActive = currentPath.startsWith('/settings');
 
   return (
     <aside
-      className="w-64 h-screen sticky top-0 backdrop-blur-2xl border-r p-4 z-20 flex flex-col gap-8"
+      className="fixed left-0 top-0 z-[60] w-64 backdrop-blur-2xl border-r p-4 flex flex-col gap-8 pointer-events-auto overflow-visible"
       style={{
+        height: '100vh',
+        minHeight: '100vh',
         background: "var(--sidebar)",
         borderColor: "var(--border)",
         boxShadow: "inset -1px 0 0 rgba(255,255,255,0.02)",
@@ -56,14 +92,18 @@ export const Sidebar = ({ activeTab = "home" }: { activeTab?: string }) => {
 
       <nav className="flex flex-col gap-1 flex-1">
         {navItems.map((item) => {
-          const isActive = activeTab === item.id;
+          const isActive = activeTab ? activeTab === item.id : getIsActive(item.id, item.href);
           return (
-            <motion.div
+            <motion.button
               key={item.id}
+              type="button"
+              onClick={() => router.push(item.href)}
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
               className={cn(
-                'flex items-center gap-3 px-4 py-3 cursor-pointer rounded-xl transition-all duration-200',
+                'relative z-[65] flex w-full items-center gap-3 px-4 py-3 cursor-pointer pointer-events-auto rounded-xl text-left transition-all duration-200 border-0 bg-transparent',
               )}
               style={{
                 color: isActive ? 'var(--foreground)' : 'var(--muted)',
@@ -80,18 +120,20 @@ export const Sidebar = ({ activeTab = "home" }: { activeTab?: string }) => {
                   style={{ background: 'var(--primary)' }}
                 />
               )}
-            </motion.div>
+            </motion.button>
           );
         })}
       </nav>
 
       <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
-        <Link
-          href="/settings"
-          prefetch
+        <motion.button
+          type="button"
+          onClick={() => router.push('/settings')}
           aria-label="Open Settings"
           aria-current={isSettingsActive ? 'page' : undefined}
-          className="flex w-full items-center gap-3 px-4 py-3 cursor-pointer rounded-xl transition-all duration-200"
+          whileHover={{ x: 4 }}
+          whileTap={{ scale: 0.98 }}
+          className="relative z-[65] flex w-full items-center gap-3 px-4 py-3 cursor-pointer rounded-xl text-left transition-all duration-200 border-0 bg-transparent pointer-events-auto"
           style={{
             color: isSettingsActive ? 'var(--foreground)' : 'var(--muted)',
             background: isSettingsActive ? 'rgba(148, 163, 184, 0.08)' : 'transparent',
@@ -100,7 +142,7 @@ export const Sidebar = ({ activeTab = "home" }: { activeTab?: string }) => {
         >
           <Settings size={20} style={{ color: isSettingsActive ? 'var(--primary)' : 'currentColor' }} />
           <span className="font-medium text-sm">Settings</span>
-        </Link>
+        </motion.button>
       </div>
     </aside>
   );

@@ -12,11 +12,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { settings } = useAppearance();
 
   return (
-    <div className="flex min-h-screen overflow-hidden" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
-      <Sidebar activeTab="home" />
+    <div className="relative min-h-screen isolate" style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--foreground)' }}>
+      <Sidebar />
 
-      <main className="flex-1 h-screen overflow-y-auto relative" style={{ background: 'transparent' }}>
-        <div className="absolute top-0 left-0 right-0 h-px z-20" style={{ background: 'linear-gradient(90deg, transparent, var(--border), transparent)' }} />
+      <main className="relative z-[1] overflow-y-auto" style={{ marginLeft: '16rem', minHeight: '100vh', background: 'transparent' }}>
+        <div className="pointer-events-none absolute top-0 left-0 right-0 h-px z-[2]" style={{ background: 'linear-gradient(90deg, transparent, var(--border), transparent)' }} />
 
         <div
           className="max-w-[1400px] mx-auto"
