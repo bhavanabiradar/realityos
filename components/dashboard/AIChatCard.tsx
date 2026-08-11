@@ -1,36 +1,50 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { GlassCard } from '../ui/GlassCard';
-import { Sparkles, ArrowRight, Brain, Zap } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { GlassCard } from "../ui/GlassCard";
+import { Sparkles, ArrowRight, Brain, Zap } from "lucide-react";
+import {
+  getChatMessages,
+  saveChatMessages,
+  type RealityChatMessage,
+} from "@/lib/realityStore";
 
-type ChatMessage = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-};
-
-const quickActions = ['Prepare notes', 'Reschedule sync', 'Summarize email'];
-
-const initialMessages: ChatMessage[] = [
-  {
-    id: 'welcome',
-    role: 'assistant',
-    content:
-      'I\'ve analyzed your schedule for today. You have a 2-hour deep work block available before your 2:30 PM meeting. Would you like me to prepare the research notes for Project Reality?',
-  },
+const quickActions = [
+  "Prepare notes",
+  "Reschedule sync",
+  "Summarize email",
 ];
 
+const welcomeMessage: RealityChatMessage = {
+  id: "welcome",
+  role: "assistant",
+  content:
+    "I've analyzed your schedule for today. You have a 2-hour deep work block available before your 2:30 PM meeting. Would you like me to prepare the research notes for Project Reality?",
+};
+
 export const AIChatCard = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<RealityChatMessage[]>([]);
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const savedMessages = getChatMessages();
+
+    if (savedMessages.length > 0) {
+      setMessages(savedMessages);
+    } else {
+      setMessages([welcomeMessage]);
+    }
+  }, []);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages, isLoading]);
 
   const sendMessage = async (promptOverride?: string) => {
@@ -40,80 +54,121 @@ export const AIChatCard = () => {
       return;
     }
 
-    const userMessage: ChatMessage = {
+    const userMessage: RealityChatMessage = {
       id: `${Date.now()}-user`,
-      role: 'user',
+      role: "user",
       content: trimmedInput,
     };
 
     const conversationForRequest = [...messages, userMessage];
+
     setMessages(conversationForRequest);
-    setInput('');
-    setError('');
+    saveChatMessages(conversationForRequest);
+
+    setInput("");
+    setError("");
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
+      console.log("REALITYOS: Sending message to /api/chat");
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages: conversationForRequest }),
+        cache: "no-store",
+        body: JSON.stringify({
+          messages: conversationForRequest.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
       });
+
+      console.log(
+        "REALITYOS: /api/chat status:",
+        response.status
+      );
 
       const data = await response.json();
 
+      console.log("REALITYOS: /api/chat response:", data);
+
       if (!response.ok) {
-        throw new Error(data?.error || 'Unable to get a response right now.');
+        throw new Error(
+          data?.error ||
+            `API request failed with status ${response.status}`
+        );
       }
 
-      const assistantReply: ChatMessage = {
+      if (!data?.text) {
+        throw new Error(
+          "Gemini returned an empty response."
+        );
+      }
+
+      const assistantReply: RealityChatMessage = {
         id: `${Date.now()}-assistant`,
-        role: 'assistant',
-        content: data?.text || 'I’m here to help.',
+        role: "assistant",
+        content: String(data.text).trim(),
       };
 
-      setMessages((current) => [...current, assistantReply]);
+      setMessages((current) => {
+        const updated = [...current, assistantReply];
+
+        saveChatMessages(updated);
+
+        return updated;
+      });
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : 'Something went wrong.';
+      console.error(
+        "REALITYOS FRONTEND CHAT ERROR:",
+        requestError
+      );
+
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Something went wrong while contacting Reality Assistant.";
+
       setError(message);
-      setMessages((current) => [
-        ...current,
-        {
-          id: `${Date.now()}-error`,
-          role: 'assistant',
-          content: 'I hit a temporary issue. Please try again in a moment.',
-        },
-      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) => {
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void sendMessage();
     }
   };
 
   return (
-    <GlassCard className="p-6 h-full flex flex-col" delay={0.4}>
+    <GlassCard className="h-full min-h-[600px] flex flex-col p-6">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Sparkles size={16} className="text-white" />
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles
+              size={16}
+              className="text-blue-400"
+            />
+
+            <h2 className="text-sm font-semibold text-white">
+              Reality Assistant
+            </h2>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white">Reality Assistant</h3>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Systems Ready</span>
-            </div>
-          </div>
+
+          <p className="mt-1 text-xs text-zinc-500">
+            Your intelligent RealityOS workspace assistant
+          </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <div className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-zinc-400 flex items-center gap-1">
             <Brain size={10} />
             Gemini
@@ -121,6 +176,7 @@ export const AIChatCard = () => {
         </div>
       </div>
 
+      {/* CHAT MESSAGES */}
       <div className="flex-1 space-y-4 mb-6 overflow-y-auto pr-1">
         {messages.map((message) => (
           <motion.div
@@ -129,15 +185,16 @@ export const AIChatCard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
             className={`rounded-2xl border p-4 text-sm leading-relaxed ${
-              message.role === 'assistant'
-                ? 'bg-white/5 border-white/5 text-zinc-300'
-                : 'ml-auto max-w-[85%] bg-blue-500/10 border border-blue-500/20 text-white'
+              message.role === "assistant"
+                ? "bg-white/5 border-white/5 text-zinc-300"
+                : "ml-auto max-w-[85%] bg-blue-500/10 border-blue-500/20 text-white"
             }`}
           >
             {message.content}
           </motion.div>
         ))}
 
+        {/* LOADING */}
         {isLoading && (
           <div className="flex items-center gap-2 rounded-2xl border border-white/5 bg-white/5 p-3 text-xs text-zinc-400">
             <span className="inline-flex gap-1">
@@ -145,20 +202,27 @@ export const AIChatCard = () => {
               <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400 [animation-delay:120ms]" />
               <span className="h-2 w-2 animate-pulse rounded-full bg-blue-400 [animation-delay:240ms]" />
             </span>
+
             Reality Assistant is thinking...
           </div>
         )}
 
+        {/* ERROR */}
         {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs text-red-300">
-            {error}
+          <div className="rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-3 text-xs text-red-300">
+            <div className="font-semibold mb-1">
+              Reality Assistant error
+            </div>
+
+            <div>{error}</div>
           </div>
         )}
 
+        {/* QUICK ACTIONS */}
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {quickActions.map((suggestion, index) => (
+          {quickActions.map((suggestion) => (
             <button
-              key={index}
+              key={suggestion}
               type="button"
               onClick={() => void sendMessage(suggestion)}
               disabled={isLoading}
@@ -172,16 +236,20 @@ export const AIChatCard = () => {
         <div ref={endRef} />
       </div>
 
+      {/* INPUT */}
       <div className="relative group">
         <textarea
           value={input}
-          onChange={(event) => setInput(event.target.value)}
+          onChange={(event) =>
+            setInput(event.target.value)
+          }
           onKeyDown={handleKeyDown}
           rows={1}
           placeholder="Ask anything..."
           aria-label="Message Reality Assistant"
           className="w-full resize-none bg-zinc-950/50 border border-white/10 rounded-xl py-3.5 pl-4 pr-12 text-sm focus:outline-none focus:ring-1 ring-blue-500/50 transition-all placeholder:text-zinc-600"
         />
+
         <button
           type="button"
           onClick={() => void sendMessage()}
@@ -193,10 +261,13 @@ export const AIChatCard = () => {
         </button>
       </div>
 
+      {/* STATUS */}
       <div className="mt-4 flex items-center justify-center gap-4">
         <div className="flex items-center gap-1 text-[10px] text-zinc-600 uppercase tracking-tighter">
           <Zap size={10} />
-          {isLoading ? 'Processing…' : 'Latency: 240ms'}
+          {isLoading
+            ? "Processing…"
+            : "RealityOS AI"}
         </div>
       </div>
     </GlassCard>

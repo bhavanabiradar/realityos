@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { EventCard } from "@/components/dashboard/EventCard";
+import { DecisionCard } from "@/components/dashboard/DecisionCard";
 
-export default function PlannerPage() {
+export default function DecisionsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.28rem] text-zinc-500">Planner</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Life Planner</h1>
+            <p className="text-xs uppercase tracking-[0.28rem] text-zinc-500">Decisions</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Decision Engine</h1>
           </div>
           <Link
             href="/dashboard"
@@ -19,7 +19,7 @@ export default function PlannerPage() {
           </Link>
         </div>
 
-        <EventCard />
+        <DecisionCard />
       </div>
     </DashboardLayout>
   );
