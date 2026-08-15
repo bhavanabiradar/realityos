@@ -20,6 +20,7 @@ export default function AIChatPage() {
         </div>
 
         <AIChatCard />
+       
       </div>
     </DashboardLayout>
   );

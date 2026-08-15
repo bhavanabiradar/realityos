@@ -10,6 +10,7 @@ import { EventCard } from "@/components/dashboard/EventCard";
 import { MemoryGrid } from "@/components/dashboard/MemoryGrid";
 import { DecisionCard } from "@/components/dashboard/DecisionCard";
 import { DocsCard } from "@/components/dashboard/DocsCard";
+import { PredictiveTimeline } from "@/components/dashboard/PredictiveTimeline";
 export default function DashboardPage() {
   return (
     <DashboardLayout>
@@ -48,12 +49,9 @@ export default function DashboardPage() {
           <DocsCard />
         </div>
 
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="h-full w-full rounded-2xl border border-white/5 bg-white/[0.02] flex items-center justify-center p-8">
-            <p className="text-zinc-600 text-sm font-medium tracking-widest uppercase">
-              Predictive Timeline Module Loading...
-            </p>
-          </div>
+{/* ✅ NEW CODE */}
+             <div className="lg:col-span-3">
+<PredictiveTimeline />        
         </div>
 
       </div>

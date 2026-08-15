@@ -1,5 +1,10 @@
 "use client";
 
+/* =========================================================
+   REALITYOS STORE
+   Central localStorage store for RealityOS
+========================================================= */
+
 export type RealityTask = {
   id: string;
   title: string;
@@ -13,6 +18,14 @@ export type RealityChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+};
+
+export type RealityChat = {
+  id: string;
+  title: string;
+  messages: RealityChatMessage[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type RealityDecision = {
@@ -33,72 +46,22 @@ export type RealityEvent = {
 };
 
 const TASKS_KEY = "realityos_tasks";
-const CHAT_KEY = "realityos_chat";
+const CHAT_HISTORY_KEY = "realityos_chat_history";
 const DECISIONS_KEY = "realityos_decisions";
 const EVENTS_KEY = "realityos_events";
 
-const defaultTasks: RealityTask[] = [
-  {
-    id: "1",
-    title: "Design System Sync",
-    category: "Project Reality",
-    priority: "High",
-    done: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    title: "Review Q3 Roadmap",
-    category: "Planning",
-    priority: "Medium",
-    done: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    title: "Update RealityOS Docs",
-    category: "Development",
-    priority: "Low",
-    done: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+function generateId(prefix = "reality") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
 
-const defaultDecisions: RealityDecision[] = [
-  {
-    id: "d1",
-    title: "Switched stack to Next.js 15",
-    category: "Tech Architecture",
-    status: "Finalized",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "d2",
-    title: "Postponed travel to Oct",
-    category: "Logistics",
-    status: "Committed",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const defaultEvents: RealityEvent[] = [
-  {
-    id: "e1",
-    title: "Vision Pro Demo",
-    time: "2:30 PM - 3:30 PM",
-    location: "Studio A",
-    type: "Event",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "e2",
-    title: "Evening Meditation",
-    time: "8:00 PM - 8:30 PM",
-    location: "Home",
-    type: "Routine",
-    createdAt: new Date().toISOString(),
-  },
-];
+  return `${prefix}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 9)}`;
+}
 
 function notifyChange() {
   if (typeof window !== "undefined") {
@@ -111,27 +74,19 @@ function notifyChange() {
 ========================================================= */
 
 export function getTasks(): RealityTask[] {
-  if (typeof window === "undefined") return defaultTasks;
-
+  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(TASKS_KEY);
-
-    if (!saved) {
-      localStorage.setItem(TASKS_KEY, JSON.stringify(defaultTasks));
-      return defaultTasks;
-    }
-
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
-
-    return Array.isArray(parsed) ? parsed : defaultTasks;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return defaultTasks;
+    return [];
   }
 }
 
 export function saveTasks(tasks: RealityTask[]) {
   if (typeof window === "undefined") return;
-
   localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
   notifyChange();
 }
@@ -141,242 +96,243 @@ export function addTask(
   category = "General",
   priority: RealityTask["priority"] = "Medium"
 ) {
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return null;
   const tasks = getTasks();
-
   const newTask: RealityTask = {
-    id: crypto.randomUUID(),
-    title,
+    id: generateId("task"),
+    title: cleanTitle,
     category,
     priority,
     done: false,
     createdAt: new Date().toISOString(),
   };
-
   saveTasks([newTask, ...tasks]);
-
   return newTask;
 }
 
 export function toggleTask(id: string) {
   const tasks = getTasks();
-
   const updated = tasks.map((task) =>
-    task.id === id
-      ? {
-          ...task,
-          done: !task.done,
-        }
-      : task
+    task.id === id ? { ...task, done: !task.done } : task
   );
-
   saveTasks(updated);
-
   return updated;
 }
 
 export function deleteTask(id: string) {
   const tasks = getTasks();
-
   const updated = tasks.filter((task) => task.id !== id);
-
   saveTasks(updated);
-
   return updated;
 }
 
 export function getLifeScore() {
   const tasks = getTasks();
-
   if (tasks.length === 0) return 72;
-
   const completed = tasks.filter((task) => task.done).length;
   const completionRate = completed / tasks.length;
-
   return Math.min(100, Math.round(60 + completionRate * 40));
 }
 
 /* =========================================================
-   AI CHAT
+   CHAT HISTORY & MEMORY
 ========================================================= */
 
-export function getChatMessages(): RealityChatMessage[] {
+export function getChatHistory(): RealityChat[] {
   if (typeof window === "undefined") return [];
-
   try {
-    const saved = localStorage.getItem(CHAT_KEY);
-
+    const saved = localStorage.getItem(CHAT_HISTORY_KEY);
     if (!saved) return [];
-
     const parsed = JSON.parse(saved);
-
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    
+    // Automatically purge any empty chats that have no user messages
+    return parsed.filter(
+      (chat) => chat.messages && chat.messages.some((m: RealityChatMessage) => m.role === "user")
+    );
   } catch {
     return [];
   }
 }
 
-export function saveChatMessages(messages: RealityChatMessage[]) {
+export function saveChatHistory(chats: RealityChat[]) {
   if (typeof window === "undefined") return;
-
-  localStorage.setItem(CHAT_KEY, JSON.stringify(messages));
+  // Only save chats that have at least one user message
+  const validChats = chats.filter(
+    (chat) => chat.messages && chat.messages.some((m) => m.role === "user")
+  );
+  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(validChats));
   notifyChange();
 }
 
-export function addChatMessage(message: RealityChatMessage) {
-  const messages = getChatMessages();
-
-  const updated = [...messages, message];
-
-  saveChatMessages(updated);
-
-  return updated;
+export function getChats(): RealityChat[] {
+  return getChatHistory();
 }
 
-export function clearChatMessages() {
-  if (typeof window === "undefined") return;
+export function getChat(id: string): RealityChat | null {
+  const history = getChatHistory();
+  return history.find((chat) => chat.id === id) ?? null;
+}
 
-  localStorage.removeItem(CHAT_KEY);
-  notifyChange();
+export function updateChat(id: string, messages: RealityChatMessage[]) {
+  const history = getChatHistory();
+  let found = false;
+
+  const firstUserMsg = messages.find((m) => m.role === "user");
+  const generatedTitle = firstUserMsg?.content?.trim().slice(0, 30) || "Conversation";
+
+  const updated = history.map((chat) => {
+    if (chat.id !== id) return chat;
+    found = true;
+    return {
+      ...chat,
+      messages,
+      title: chat.title === "New Chat" ? generatedTitle : chat.title,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  if (!found && messages.some((m) => m.role === "user")) {
+    updated.unshift({
+      id,
+      title: generatedTitle,
+      messages,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  saveChatHistory(updated);
+  return updated.find((chat) => chat.id === id) ?? null;
+}
+
+export function updateChatMessages(chatId: string, messages: RealityChatMessage[]) {
+  return updateChat(chatId, messages);
+}
+
+export function renameChat(chatId: string, title: string) {
+  const chats = getChatHistory();
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return null;
+
+  const updatedChats = chats.map((chat) =>
+    chat.id === chatId
+      ? { ...chat, title: cleanTitle, updatedAt: new Date().toISOString() }
+      : chat
+  );
+
+  saveChatHistory(updatedChats);
+  return updatedChats.find((chat) => chat.id === chatId) ?? null;
+}
+
+export function deleteChat(chatId: string) {
+  const chats = getChatHistory();
+  const updatedChats = chats.filter((chat) => chat.id !== chatId);
+  saveChatHistory(updatedChats);
+  return updatedChats;
+}
+
+// Extracts recent memory across all past chats to give AI long-term context
+export function getCrossChatMemories(excludeChatId?: string | null): string[] {
+  const history = getChatHistory();
+  const memories: string[] = [];
+
+  history
+    .filter((c) => c.id !== excludeChatId)
+    .slice(0, 5) // Last 5 conversations
+    .forEach((c) => {
+      const userMsgs = c.messages
+        .filter((m) => m.role === "user")
+        .map((m) => m.content)
+        .join(" | ");
+      if (userMsgs) {
+        memories.push(`[Topic: ${c.title}]: User said -> ${userMsgs.slice(0, 300)}`);
+      }
+    });
+
+  return memories;
 }
 
 /* =========================================================
-   DECISIONS
+   DECISIONS & EVENTS
 ========================================================= */
 
 export function getDecisions(): RealityDecision[] {
-  if (typeof window === "undefined") return defaultDecisions;
-
+  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(DECISIONS_KEY);
-
-    if (!saved) {
-      localStorage.setItem(
-        DECISIONS_KEY,
-        JSON.stringify(defaultDecisions)
-      );
-
-      return defaultDecisions;
-    }
-
-    const parsed = JSON.parse(saved);
-
-    return Array.isArray(parsed) ? parsed : defaultDecisions;
+    if (!saved) return [];
+    return JSON.parse(saved) || [];
   } catch {
-    return defaultDecisions;
+    return [];
   }
 }
 
 export function saveDecisions(decisions: RealityDecision[]) {
   if (typeof window === "undefined") return;
-
-  localStorage.setItem(
-    DECISIONS_KEY,
-    JSON.stringify(decisions)
-  );
-
+  localStorage.setItem(DECISIONS_KEY, JSON.stringify(decisions));
   notifyChange();
 }
 
-export function addDecision(
-  title: string,
-  category = "General",
-  status = "Committed"
-) {
+export function addDecision(title: string, category = "General", status = "Committed") {
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return null;
   const decisions = getDecisions();
-
   const newDecision: RealityDecision = {
-    id: crypto.randomUUID(),
-    title,
+    id: generateId("decision"),
+    title: cleanTitle,
     category,
     status,
     createdAt: new Date().toISOString(),
   };
-
   saveDecisions([newDecision, ...decisions]);
-
   return newDecision;
 }
 
 export function deleteDecision(id: string) {
   const decisions = getDecisions();
-
-  const updated = decisions.filter(
-    (decision) => decision.id !== id
-  );
-
+  const updated = decisions.filter((d) => d.id !== id);
   saveDecisions(updated);
-
   return updated;
 }
 
-/* =========================================================
-   PLANNER EVENTS
-========================================================= */
-
 export function getEvents(): RealityEvent[] {
-  if (typeof window === "undefined") return defaultEvents;
-
+  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(EVENTS_KEY);
-
-    if (!saved) {
-      localStorage.setItem(
-        EVENTS_KEY,
-        JSON.stringify(defaultEvents)
-      );
-
-      return defaultEvents;
-    }
-
-    const parsed = JSON.parse(saved);
-
-    return Array.isArray(parsed) ? parsed : defaultEvents;
+    if (!saved) return [];
+    return JSON.parse(saved) || [];
   } catch {
-    return defaultEvents;
+    return [];
   }
 }
 
 export function saveEvents(events: RealityEvent[]) {
   if (typeof window === "undefined") return;
-
-  localStorage.setItem(
-    EVENTS_KEY,
-    JSON.stringify(events)
-  );
-
+  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
   notifyChange();
 }
 
-export function addEvent(
-  title: string,
-  time: string,
-  location = "",
-  type = "Event"
-) {
+export function addEvent(title: string, time: string, location = "", type = "Event") {
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return null;
   const events = getEvents();
-
   const newEvent: RealityEvent = {
-    id: crypto.randomUUID(),
-    title,
+    id: generateId("event"),
+    title: cleanTitle,
     time,
     location: location || undefined,
     type,
     createdAt: new Date().toISOString(),
   };
-
   saveEvents([newEvent, ...events]);
-
   return newEvent;
 }
 
 export function deleteEvent(id: string) {
   const events = getEvents();
-
-  const updated = events.filter(
-    (event) => event.id !== id
-  );
-
+  const updated = events.filter((e) => e.id !== id);
   saveEvents(updated);
-
   return updated;
 }

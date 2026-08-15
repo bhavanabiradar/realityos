@@ -9,19 +9,26 @@ import { LifeScore } from '@/components/dashboard/LifeScore';
 import { TasksCard } from '@/components/dashboard/TasksCard';
 import { AIChatCard } from '@/components/dashboard/AIChatCard';
 import { EventCard } from '@/components/dashboard/EventCard';
-import { MemoryGrid } from '@/components/dashboard/MemoryGrid';
+import  MemoryGrid  from '@/components/dashboard/MemoryGrid';
 import { DecisionCard } from '@/components/dashboard/DecisionCard';
 import { DocsCard } from '@/components/dashboard/DocsCard';
 import RealityCommandCenter from '@/components/dashboard/RealityCommandCenter';
+import { PredictiveTimeline } from "@/components/dashboard/PredictiveTimeline";
 
 export default function DashboardPage() {
   return (
-    <DashboardLayout>
-      {/* Top Header Section */}
-      <Greeting />
+           <DashboardLayout>
+  {/* Top Header Section */}
+  <Greeting />
 
-      {/* Main Dashboard Grid */}
+  {/* RealityOS Command Center */}
+  <div className="mb-6">
+    <RealityCommandCenter />
+  </div>
+
+  {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+   
         
         {/* Row 1: Health, Tasks, and Wide AI Chat */}
         <div className="lg:col-span-1">
@@ -55,12 +62,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Placeholder for future expansion or "Upcoming Calendar" (detailed) */}
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="h-full w-full rounded-2xl border border-white/5 bg-white/[0.02] flex items-center justify-center p-8">
-            <p className="text-zinc-600 text-sm font-medium tracking-widest uppercase">
-              Predictive Timeline Module Loading...
-            </p>
-          </div>
+        {/* ✅ NEW CODE */}
+        <div className="lg:col-span-3">
+          <PredictiveTimeline />
         </div>
 
       </div>

@@ -12,10 +12,20 @@ Your job is to help the user:
 - think through decisions
 - use their RealityOS workspace
 
-Be helpful, concise, natural and friendly.
+You have access to the user's current RealityOS workspace data when it is provided below.
 
-Never claim to know information that has not been provided to you.
-If you do not know something, say so clearly.
+Use that workspace data to answer questions about:
+- tasks
+- priorities
+- completed and incomplete tasks
+- upcoming events
+- decisions
+
+IMPORTANT:
+- Use the provided RealityOS data when answering workspace questions.
+- Never invent tasks, events, decisions, or schedule information.
+- If the requested information is not present in the workspace data, say that clearly.
+- Be helpful, concise, natural and friendly.
 `;
 
 type ChatMessage = {
@@ -23,16 +33,23 @@ type ChatMessage = {
   content: string;
 };
 
+type WorkspaceContext = {
+  tasks?: unknown[];
+  events?: unknown[];
+  decisions?: unknown[];
+};
+
 export async function POST(request: Request) {
   try {
-    // Read request body
     const body = await request.json();
 
     const messages = Array.isArray(body?.messages)
       ? body.messages
       : [];
 
-    // Check API key
+    const workspace: WorkspaceContext =
+      body?.workspace ?? {};
+
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -45,7 +62,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Clean and limit conversation
     const sanitizedMessages: ChatMessage[] = messages
       .filter(
         (message: any) =>
@@ -71,12 +87,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create Gemini client
+    const workspaceContext = `
+CURRENT REALITYOS WORKSPACE DATA:
+
+TASKS:
+${JSON.stringify(workspace.tasks ?? [], null, 2)}
+
+EVENTS:
+${JSON.stringify(workspace.events ?? [], null, 2)}
+
+DECISIONS:
+${JSON.stringify(workspace.decisions ?? [], null, 2)}
+`;
+
     const ai = new GoogleGenAI({
       apiKey,
     });
 
-    // Convert our chat format to Gemini format
     const contents = sanitizedMessages.map((message) => ({
       role:
         message.role === "assistant"
@@ -89,12 +116,12 @@ export async function POST(request: Request) {
       ],
     }));
 
-    // Ask Gemini
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",
       contents,
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction:
+          SYSTEM_INSTRUCTION + "\n\n" + workspaceContext,
         temperature: 0.7,
         maxOutputTokens: 1000,
       },
@@ -115,7 +142,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send response back to the frontend
     return NextResponse.json({
       text,
     });

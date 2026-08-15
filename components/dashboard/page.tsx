@@ -1,66 +1,75 @@
 "use client";
 
-import React from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Greeting } from '@/components/dashboard/Greeting';
-import { LifeScore } from '@/components/dashboard/LifeScore';
-import { TasksCard } from '@/components/dashboard/TasksCard';
-import { AIChatCard } from '@/components/dashboard/AIChatCard';
-import { EventCard } from '@/components/dashboard/EventCard';
-import { MemoryGrid } from '@/components/dashboard/MemoryGrid';
-import { DecisionCard } from '@/components/dashboard/DecisionCard';
-import { DocsCard } from '@/components/dashboard/DocsCard';
+import React from "react";
+
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Greeting } from "@/components/dashboard/Greeting";
+import { LifeScore } from "@/components/dashboard/LifeScore";
+import { TasksCard } from "@/components/dashboard/TasksCard";
+import { AIChatCard } from "@/components/dashboard/AIChatCard";
+import { EventCard } from "@/components/dashboard/EventCard";
+import  MemoryGrid  from "@/components/dashboard/MemoryGrid";
+import { DecisionCard } from "@/components/dashboard/DecisionCard";
+import { DocsCard } from "@/components/dashboard/DocsCard";
 
 export default function DashboardPage() {
   return (
     <DashboardLayout>
-      {/* Top Header Section */}
+
+      {/* TOP HEADER */}
       <Greeting />
 
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* Row 1: Health, Tasks, and Wide AI Chat */}
-        <div className="lg:col-span-1">
-          <LifeScore />
-        </div>
-        
-        <div className="lg:col-span-1">
-          <TasksCard />
-        </div>
+      {/* MAIN DASHBOARD */}
+     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start min-h-0">
 
-        <div className="md:col-span-2 lg:col-span-2">
-          <AIChatCard />
-        </div>
+        {/* ================= LEFT SIDE ================= */}
+        <div className="lg:col-span-2 min-h-0">
 
-        {/* Row 2: Calendar, Memories, and Decisions */}
-        <div className="lg:col-span-1">
-          <EventCard />
-        </div>
+          {/* SCROLLABLE LEFT DASHBOARD */}
+          <div className="h-full overflow-y-auto pr-2 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
 
-        <div className="md:col-span-2 lg:col-span-2">
-          <MemoryGrid />
-        </div>
+            {/* ROW 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <LifeScore />
+              <TasksCard />
+            </div>
 
-        <div className="lg:col-span-1">
-          <DecisionCard />
-        </div>
+            {/* ROW 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <EventCard />
+              <MemoryGrid />
+            </div>
 
-        {/* Row 3: Documents and potentially other stats */}
-        <div className="lg:col-span-1">
-          <DocsCard />
-        </div>
+            {/* ROW 3 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <DecisionCard />
+              <DocsCard />
+            </div>
 
-        {/* Placeholder for future expansion or "Upcoming Calendar" (detailed) */}
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="h-full w-full rounded-2xl border border-white/5 bg-white/[0.02] flex items-center justify-center p-8">
-            <p className="text-zinc-600 text-sm font-medium tracking-widest uppercase">
-              Predictive Timeline Module Loading...
-            </p>
           </div>
         </div>
+{/* ================= RIGHT SIDE — AI CHAT ================= */}
+<div className="lg:col-span-2 h-[600px] min-h-0 overflow-hidden">
 
+
+  {/* FIXED SCROLLABLE AI CHAT BOX */}
+  <div
+    className="
+      h-[calc(100vh-150px)]
+      min-h-[500px]
+      overflow-y-auto
+      pr-2
+      scrollbar-thin
+      scrollbar-thumb-white/10
+      scrollbar-track-transparent
+    "
+  >
+    <AIChatCard />
+  </div>
+
+        </div>
       </div>
+
     </DashboardLayout>
   );
 }
