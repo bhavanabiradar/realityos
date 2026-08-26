@@ -126,3 +126,9 @@ html.reduced-motion .animate-mesh {
 .animate-mesh {
   animation: mesh-gradient 15s ease-in-out infinite;
 }
+/* Hide Next.js dev toast and indicator */
+nextjs-portal,
+[data-nextjs-toast],
+[data-nextjs-dialog] {
+  display: none !important;
+}

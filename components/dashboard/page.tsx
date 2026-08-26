@@ -5,7 +5,7 @@ import React from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Greeting } from "@/components/dashboard/Greeting";
 import { LifeScore } from "@/components/dashboard/LifeScore";
-import { TasksCard } from "@/components/dashboard/TasksCard";
+import { GoalTrackerCard } from "@/components/dashboard/GoalTrackerCard";
 import { AIChatCard } from "@/components/dashboard/AIChatCard";
 import { EventCard } from "@/components/dashboard/EventCard";
 import  MemoryGrid  from "@/components/dashboard/MemoryGrid";
@@ -31,7 +31,7 @@ export default function DashboardPage() {
             {/* ROW 1 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <LifeScore />
-              <TasksCard />
+            <GoalTrackerCard />
             </div>
 
             {/* ROW 2 */}

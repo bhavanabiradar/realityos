@@ -1,68 +1,55 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Search, Plus } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-export const Greeting = () => {
+export function Greeting() {
+  const [userName, setUserName] = useState<string>("there");
+  const [greetingText, setGreetingText] = useState<string>("Good day");
+  const supabase = createClient();
+
+  useEffect(() => {
+    // 1. Calculate real time greeting based on system clock
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      setGreetingText("Good morning");
+    } else if (hour >= 12 && hour < 17) {
+      setGreetingText("Good afternoon");
+    } else if (hour >= 17 && hour < 22) {
+      setGreetingText("Good evening");
+    } else {
+      setGreetingText("Good night");
+    }
+
+    // 2. Fetch logged-in user details
+    const getUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Extract display name or part before @ in email
+        const metadataName = user.user_metadata?.full_name || user.user_metadata?.name;
+        if (metadataName) {
+          setUserName(metadataName);
+        } else if (user.email) {
+          const emailPrefix = user.email.split("@")[0];
+          // Format capitalized name
+          setUserName(emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1));
+        }
+      }
+    };
+
+    getUserData();
+  }, [supabase]);
+
   return (
-    <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-      >
-        <h1
-          className="text-4xl font-bold tracking-tight bg-gradient-to-r bg-clip-text text-transparent"
-          style={{
-            backgroundImage: 'linear-gradient(135deg, var(--foreground), var(--primary), var(--muted))',
-          }}
-        >
-          Good afternoon, Bhavana
-        </h1>
-        <p className="mt-2 font-medium" style={{ color: 'var(--muted)' }}>
-          Your Reality is in sync. You have 4 priorities remaining today.
-        </p>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, delay: 0.1 }}
-        className="flex items-center gap-4"
-      >
-        <div className="relative group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors"
-            size={18}
-            style={{ color: 'var(--muted)' }}
-          />
-          <input
-            type="text"
-            placeholder="Ask Reality anything..."
-            className="rounded-2xl py-3 pl-12 pr-6 text-sm focus:outline-none focus:ring-2 transition-all w-full md:w-80 backdrop-blur-md"
-            style={{
-              background: 'rgba(15,23,42,0.18)',
-              border: '1px solid var(--border)',
-              color: 'var(--foreground)',
-              boxShadow: '0 0 0 1px rgba(255,255,255,0.02)',
-            }}
-          />
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="p-3.5 rounded-2xl transition-colors"
-          style={{
-            background: 'var(--primary)',
-            color: 'var(--primary-foreground)',
-            boxShadow: '0 14px 24px rgba(96, 165, 250, 0.2)',
-          }}
-        >
-          <Plus size={20} strokeWidth={2.5} />
-        </motion.button>
-      </motion.div>
-    </header>
+    <div className="space-y-1">
+      <h1 className="text-3xl font-bold tracking-tight text-white">
+        {greetingText}, <span className="text-cyan-400">{userName}</span>
+      </h1>
+      <p className="text-xs text-neutral-400">
+        Your Reality is in sync. Welcome to your personalized workspace.
+      </p>
+    </div>
   );
-};
+}
+
+export default Greeting;

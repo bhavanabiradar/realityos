@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { MemoryGrid } from "@/components/dashboard/MemoryGrid";
+import  MemoryGrid from "@/components/dashboard/MemoryGrid";
 
 export default function MemoryPage() {
   return (

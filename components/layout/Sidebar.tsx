@@ -1,8 +1,8 @@
 "use client";
 
-import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Home,
   MessageSquare,
@@ -12,9 +12,10 @@ import {
   Target,
   AlertCircle,
   Settings,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAppearance } from '@/components/providers/AppearanceProvider';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAppearance } from "@/components/providers/AppearanceProvider";
+import SignOutButton from "@/components/SignOutButton";
 
 const navItems = [
   { icon: Home, label: "Home", id: "home", href: "/dashboard" },
@@ -30,120 +31,77 @@ export const Sidebar = ({ activeTab }: { activeTab?: string }) => {
   const pathname = usePathname();
   const router = useRouter();
   const { settings } = useAppearance();
-  const currentPath = pathname ?? "/";
 
-  const getIsActive = (itemId: string, href: string) => {
-    if (itemId === 'home') {
-      return currentPath === '/' || currentPath === '/dashboard' || currentPath === href;
-    }
-
-    if (itemId === 'chat') {
-      return currentPath === '/ai-chat';
-    }
-
-    if (itemId === 'memory') {
-      return currentPath === '/memory';
-    }
-
-    if (itemId === 'docs') {
-      return currentPath === '/documents';
-    }
-
-    if (itemId === 'planner') {
-      return currentPath === '/planner';
-    }
-
-    if (itemId === 'decisions') {
-      return currentPath === '/decisions';
-    }
-
-    if (itemId === 'emergency') {
-      return currentPath === '/emergency';
-    }
-
-    return currentPath === href;
-  };
-
-  const isSettingsActive = currentPath.startsWith('/settings');
+  const isSettingsActive = pathname === "/settings" || activeTab === "settings";
 
   return (
-    <aside
-      className="fixed left-0 top-0 z-[60] w-64 backdrop-blur-2xl border-r p-4 flex flex-col gap-8 pointer-events-auto overflow-visible"
-      style={{
-        height: '100vh',
-        minHeight: '100vh',
-        background: "var(--sidebar)",
-        borderColor: "var(--border)",
-        boxShadow: "inset -1px 0 0 rgba(255,255,255,0.02)",
-      }}
-    >
-      <div className="flex items-center gap-3 px-2 py-4">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg"
-          style={{
-            background: "linear-gradient(135deg, var(--primary), var(--secondary))",
-            boxShadow: `0 12px 24px ${settings.reducedMotion ? 'transparent' : 'var(--glow)'}`,
-          }}
-        >
-          <span className="font-bold text-xs text-white">R</span>
+    <aside className="w-64 h-screen bg-[#0B0C10] border-r border-neutral-800/80 flex flex-col justify-between p-4 select-none shrink-0">
+      <div className="space-y-6">
+        {/* App Logo */}
+        <div className="flex items-center gap-3 px-3 py-2 cursor-pointer" onClick={() => router.push("/dashboard")}>
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center font-bold text-white text-base shadow-lg shadow-cyan-500/20">
+            R
+          </div>
+          <div>
+            <h1 className="font-bold text-sm tracking-wide text-white">RealityOS</h1>
+            <p className="text-[10px] text-neutral-500 font-medium tracking-wider uppercase">Workspace</p>
+          </div>
         </div>
-        <span className="font-semibold tracking-tight text-lg" style={{ color: "var(--foreground)" }}>RealityOS</span>
+
+        {/* Navigation Items */}
+        <nav className="space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href || activeTab === item.id;
+
+            return (
+              <motion.button
+                key={item.id}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push(item.href)}
+                className={cn(
+                  "relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer text-left",
+                  isActive
+                    ? "bg-neutral-800/70 text-white font-semibold shadow-inner border border-neutral-700/40"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60"
+                )}
+              >
+                <Icon size={16} className={isActive ? "text-cyan-400" : "text-neutral-400"} />
+                <span>{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute right-2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"
+                  />
+                )}
+              </motion.button>
+            );
+          })}
+        </nav>
       </div>
 
-      <nav className="flex flex-col gap-1 flex-1">
-        {navItems.map((item) => {
-          const isActive = activeTab ? activeTab === item.id : getIsActive(item.id, item.href);
-          return (
-            <motion.button
-              key={item.id}
-              type="button"
-              onClick={() => router.push(item.href)}
-              aria-label={item.label}
-              aria-current={isActive ? 'page' : undefined}
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={cn(
-                'relative z-[65] flex w-full items-center gap-3 px-4 py-3 cursor-pointer pointer-events-auto rounded-xl text-left transition-all duration-200 border-0 bg-transparent',
-              )}
-              style={{
-                color: isActive ? 'var(--foreground)' : 'var(--muted)',
-                background: isActive ? 'rgba(148, 163, 184, 0.08)' : 'transparent',
-                boxShadow: isActive ? 'inset 0 0 0 1px rgba(255,255,255,0.04)' : 'none',
-              }}
-            >
-              <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} style={{ color: isActive ? 'var(--primary)' : 'currentColor' }} />
-              <span className="font-medium text-sm">{item.label}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="active-pill"
-                  className="ml-auto w-1 h-4 rounded-full"
-                  style={{ background: 'var(--primary)' }}
-                />
-              )}
-            </motion.button>
-          );
-        })}
-      </nav>
-
-      <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+      {/* Bottom Actions: Settings & Logout */}
+      <div className="pt-4 border-t border-neutral-800/80 space-y-1">
         <motion.button
-          type="button"
-          onClick={() => router.push('/settings')}
-          aria-label="Open Settings"
-          aria-current={isSettingsActive ? 'page' : undefined}
           whileHover={{ x: 4 }}
           whileTap={{ scale: 0.98 }}
-          className="relative z-[65] flex w-full items-center gap-3 px-4 py-3 cursor-pointer rounded-xl text-left transition-all duration-200 border-0 bg-transparent pointer-events-auto"
-          style={{
-            color: isSettingsActive ? 'var(--foreground)' : 'var(--muted)',
-            background: isSettingsActive ? 'rgba(148, 163, 184, 0.08)' : 'transparent',
-            boxShadow: isSettingsActive ? 'inset 0 0 0 1px rgba(255,255,255,0.04)' : 'none',
-          }}
+          onClick={() => router.push("/settings")}
+          className={cn(
+            "relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer text-left",
+            isSettingsActive
+              ? "bg-neutral-800/70 text-white font-semibold shadow-inner border border-neutral-700/40"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60"
+          )}
         >
-          <Settings size={20} style={{ color: isSettingsActive ? 'var(--primary)' : 'currentColor' }} />
-          <span className="font-medium text-sm">Settings</span>
+          <Settings size={16} className={isSettingsActive ? "text-cyan-400" : "text-neutral-400"} />
+          <span>Settings</span>
         </motion.button>
+
+        <SignOutButton />
       </div>
     </aside>
   );
 };
+
+export default Sidebar;

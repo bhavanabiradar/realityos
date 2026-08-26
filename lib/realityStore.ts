@@ -2,7 +2,7 @@
 
 /* =========================================================
    REALITYOS STORE
-   Central localStorage store for RealityOS
+   Scoped per-user localStorage store for RealityOS
 ========================================================= */
 
 export type RealityTask = {
@@ -45,10 +45,31 @@ export type RealityEvent = {
   createdAt: string;
 };
 
-const TASKS_KEY = "realityos_tasks";
-const CHAT_HISTORY_KEY = "realityos_chat_history";
-const DECISIONS_KEY = "realityos_decisions";
-const EVENTS_KEY = "realityos_events";
+// Helper to get active user ID or email from Supabase auth token in localStorage
+function getUserPrefix(): string {
+  if (typeof window === "undefined") return "guest";
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const item = localStorage.getItem(key);
+        if (item) {
+          const parsed = JSON.parse(item);
+          const userId = parsed?.user?.id || parsed?.user?.email;
+          if (userId) return userId;
+        }
+      }
+    }
+  } catch {
+    // fallback to guest if parsing fails
+  }
+  return "guest";
+}
+
+const getTasksKey = () => `realityos_${getUserPrefix()}_tasks`;
+const getChatHistoryKey = () => `realityos_${getUserPrefix()}_chat_history`;
+const getDecisionsKey = () => `realityos_${getUserPrefix()}_decisions`;
+const getEventsKey = () => `realityos_${getUserPrefix()}_events`;
 
 function generateId(prefix = "reality") {
   if (
@@ -76,7 +97,7 @@ function notifyChange() {
 export function getTasks(): RealityTask[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = localStorage.getItem(TASKS_KEY);
+    const saved = localStorage.getItem(getTasksKey());
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     return Array.isArray(parsed) ? parsed : [];
@@ -87,7 +108,7 @@ export function getTasks(): RealityTask[] {
 
 export function saveTasks(tasks: RealityTask[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  localStorage.setItem(getTasksKey(), JSON.stringify(tasks));
   notifyChange();
 }
 
@@ -142,12 +163,11 @@ export function getLifeScore() {
 export function getChatHistory(): RealityChat[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+    const saved = localStorage.getItem(getChatHistoryKey());
     if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (!Array.isArray(parsed)) return [];
     
-    // Automatically purge any empty chats that have no user messages
     return parsed.filter(
       (chat) => chat.messages && chat.messages.some((m: RealityChatMessage) => m.role === "user")
     );
@@ -158,11 +178,10 @@ export function getChatHistory(): RealityChat[] {
 
 export function saveChatHistory(chats: RealityChat[]) {
   if (typeof window === "undefined") return;
-  // Only save chats that have at least one user message
   const validChats = chats.filter(
     (chat) => chat.messages && chat.messages.some((m) => m.role === "user")
   );
-  localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(validChats));
+  localStorage.setItem(getChatHistoryKey(), JSON.stringify(validChats));
   notifyChange();
 }
 
@@ -233,14 +252,13 @@ export function deleteChat(chatId: string) {
   return updatedChats;
 }
 
-// Extracts recent memory across all past chats to give AI long-term context
 export function getCrossChatMemories(excludeChatId?: string | null): string[] {
   const history = getChatHistory();
   const memories: string[] = [];
 
   history
     .filter((c) => c.id !== excludeChatId)
-    .slice(0, 5) // Last 5 conversations
+    .slice(0, 5)
     .forEach((c) => {
       const userMsgs = c.messages
         .filter((m) => m.role === "user")
@@ -261,7 +279,7 @@ export function getCrossChatMemories(excludeChatId?: string | null): string[] {
 export function getDecisions(): RealityDecision[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = localStorage.getItem(DECISIONS_KEY);
+    const saved = localStorage.getItem(getDecisionsKey());
     if (!saved) return [];
     return JSON.parse(saved) || [];
   } catch {
@@ -271,7 +289,7 @@ export function getDecisions(): RealityDecision[] {
 
 export function saveDecisions(decisions: RealityDecision[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(DECISIONS_KEY, JSON.stringify(decisions));
+  localStorage.setItem(getDecisionsKey(), JSON.stringify(decisions));
   notifyChange();
 }
 
@@ -300,7 +318,7 @@ export function deleteDecision(id: string) {
 export function getEvents(): RealityEvent[] {
   if (typeof window === "undefined") return [];
   try {
-    const saved = localStorage.getItem(EVENTS_KEY);
+    const saved = localStorage.getItem(getEventsKey());
     if (!saved) return [];
     return JSON.parse(saved) || [];
   } catch {
@@ -310,7 +328,7 @@ export function getEvents(): RealityEvent[] {
 
 export function saveEvents(events: RealityEvent[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
+  localStorage.setItem(getEventsKey(), JSON.stringify(events));
   notifyChange();
 }
 
