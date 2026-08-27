@@ -36,6 +36,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
+  
+  // Protected routes that strictly require authentication
   const isProtectedPage =
     request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/ai-chat") ||
@@ -44,17 +46,16 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/planner") ||
     request.nextUrl.pathname.startsWith("/decisions") ||
     request.nextUrl.pathname.startsWith("/emergency") ||
-    request.nextUrl.pathname.startsWith("/settings") ||
-    request.nextUrl.pathname === "/";
+    request.nextUrl.pathname.startsWith("/settings");
 
-  // Redirect unauthenticated users to /login
-  if (!user && isProtectedPage && !isAuthPage) {
+  // 1. Redirect unauthenticated users to /login
+  if (!user && isProtectedPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from /login to /dashboard
+  // 2. Redirect logged-in users away from /login directly to /dashboard
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
@@ -66,6 +67,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|auth/callback|auth/confirm|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

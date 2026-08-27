@@ -1,5 +1,5 @@
 import Logo from "./ui/Logo";
-import { Twitter, Github, Linkedin } from "lucide-react";
+import { Twitter, Github, Linkedin, Link } from "lucide-react";
 
 const COLUMNS = [
   {
@@ -73,3 +73,12 @@ export default function Footer() {
     </footer>
   );
 }
+<div className="flex items-center justify-center gap-6 text-xs text-neutral-500">
+  <Link href="/privacy" className="hover:text-neutral-300 transition">
+    Privacy Policy
+  </Link>
+  <span>•</span>
+  <Link href="/terms" className="hover:text-neutral-300 transition">
+    Terms of Service
+  </Link>
+</div>
