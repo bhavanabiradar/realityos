@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Mic, Eye, Users, FileText, Plus, Loader2, Sparkles } from "lucide-react";
-import { fetchUserMemories, createDatabaseMemory } from "@/lib/supabaseStore";
+import { Mic, Eye, Users, FileText, Plus, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { fetchUserMemories, createDatabaseMemory, deleteDatabaseMemory } from "@/lib/supabaseStore";
 
 interface MemoryItem {
   id: string;
@@ -25,9 +25,14 @@ export default function MemoryGrid() {
   // Load memories from Supabase
   const loadMemories = async () => {
     setLoading(true);
-    const data = await fetchUserMemories();
-    setMemories(data);
-    setLoading(false);
+    try {
+      const data = await fetchUserMemories();
+      setMemories(data || []);
+    } catch (err) {
+      console.error("Failed to load memories:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -39,20 +44,30 @@ export default function MemoryGrid() {
     if (!newTitle.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
-    const created = await createDatabaseMemory(
-      newTitle.trim(),
-      newType,
-      newSummary.trim() || "Snapshot captured",
-      "2 MB"
-    );
+    try {
+      const created = await createDatabaseMemory(
+        newTitle.trim(),
+        newType,
+        newSummary.trim() || "Snapshot captured"
+      );
 
-    if (created) {
-      setMemories((prev) => [created, ...prev]);
-      setNewTitle("");
-      setNewSummary("");
-      setShowAddModal(false);
+      if (created) {
+        setMemories((prev) => [created, ...prev]);
+        setNewTitle("");
+        setNewSummary("");
+        setShowAddModal(false);
+      }
+    } catch (error) {
+      console.error("Error creating memory:", error);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
+  };
+
+  const handleDeleteMemory = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMemories((prev) => prev.filter((m) => m.id !== id));
+    await deleteDatabaseMemory(id);
   };
 
   const getTypeIcon = (type: string) => {
@@ -112,7 +127,7 @@ export default function MemoryGrid() {
             {memories.map((mem) => (
               <div
                 key={mem.id}
-                className="p-3 bg-neutral-900/60 border border-neutral-800/80 rounded-xl space-y-2 hover:border-neutral-700 transition"
+                className="group relative p-3 bg-neutral-900/60 border border-neutral-800/80 rounded-xl space-y-2 hover:border-neutral-700 transition"
               >
                 <div className="flex items-center justify-between">
                   <span
@@ -123,7 +138,16 @@ export default function MemoryGrid() {
                     {getTypeIcon(mem.type)}
                     <span className="capitalize">{mem.type}</span>
                   </span>
-                  <span className="text-[10px] text-neutral-500">{mem.date}</span>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-neutral-500">{mem.date}</span>
+                    <button
+                      onClick={(e) => handleDeleteMemory(mem.id, e)}
+                      className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-red-400 transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
 
                 <h4 className="text-xs font-semibold text-white truncate">
@@ -191,7 +215,7 @@ export default function MemoryGrid() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-xl text-xs font-medium transition"
+                  className="flex-1 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 rounded-xl text-xs font-medium transition cursor-pointer"
                 >
                   Cancel
                 </button>

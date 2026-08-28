@@ -134,6 +134,138 @@ export async function createDatabaseEvent(
 }
 
 // =======================
+// MEMORIES
+// =======================
+
+export async function fetchUserMemories() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("memories")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading memories:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createDatabaseMemory(
+  title: string,
+  type: string = "text",
+  summary: string = ""
+) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("memories")
+    .insert([
+      {
+        user_id: user.id,
+        title,
+        type,
+        summary,
+        size: "1 MB",
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding memory:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteDatabaseMemory(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("memories")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) console.error("Error deleting memory:", error);
+}
+
+// =======================
+// DOCUMENTS
+// =======================
+
+export async function fetchUserDocuments() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading documents:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createDatabaseDocument(
+  name: string,
+  size: string = "1 MB",
+  file_url: string = ""
+) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("documents")
+    .insert([
+      {
+        user_id: user.id,
+        name,
+        size,
+        file_url,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating document:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteDatabaseDocument(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("documents")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) console.error("Error deleting document:", error);
+}
+
+// =======================
 // CHECKLIST & HABITS
 // =======================
 
