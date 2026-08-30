@@ -36,26 +36,18 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/login");
-  
-  // Protected routes that strictly require authentication
-  const isProtectedPage =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/ai-chat") ||
-    request.nextUrl.pathname.startsWith("/memory") ||
-    request.nextUrl.pathname.startsWith("/documents") ||
-    request.nextUrl.pathname.startsWith("/planner") ||
-    request.nextUrl.pathname.startsWith("/decisions") ||
-    request.nextUrl.pathname.startsWith("/emergency") ||
-    request.nextUrl.pathname.startsWith("/settings");
+  const isPublicLegal =
+    request.nextUrl.pathname.startsWith("/privacy") ||
+    request.nextUrl.pathname.startsWith("/terms");
 
-  // 1. Redirect unauthenticated users to /login
-  if (!user && isProtectedPage) {
+  // If user is not logged in and not on public pages, send immediately to /login
+  if (!user && !isAuthPage && !isPublicLegal) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // 2. Redirect logged-in users away from /login directly to /dashboard
+  // If logged in user goes to /login, take them straight to /dashboard
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
@@ -67,6 +59,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|auth/callback|auth/confirm|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|opengraph-image.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
