@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import OnboardingModal from "@/components/dashboard/OnboardingModal";
 import { 
   CheckSquare, 
   Bot, 
@@ -14,7 +15,6 @@ import {
   ShieldAlert, 
   ArrowRight, 
   Sparkles, 
-  Zap, 
   ShieldCheck, 
   Clock
 } from "lucide-react";
@@ -34,13 +34,16 @@ export default function DashboardPage() {
 
     setCurrentTime(new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }));
 
-    // 2. Fetch authenticated user profile name
+    // 2. Fetch authenticated user profile name & clean formatting
     async function loadUser() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
-        const extracted = user.email.split("@")[0];
-        setUserName(extracted.charAt(0).toUpperCase() + extracted.slice(1));
+        // Extract prefix and remove trailing numbers for a clean first name
+        const rawPrefix = user.email.split("@")[0];
+        const cleaned = rawPrefix.replace(/[0-9]+[a-zA-Z0-9]*$/, ""); 
+        const displayName = cleaned || rawPrefix;
+        setUserName(displayName.charAt(0).toUpperCase() + displayName.slice(1));
       }
     }
     loadUser();
@@ -127,12 +130,16 @@ export default function DashboardPage() {
               Your intelligent digital workspace is synced and ready. Use the sidebar to enter specific modules, or select any feature below to get started.
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-neutral-400">
-              <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl">
+            {/* Quick Action Badges & Demo Tour Modal */}
+            <div className="flex flex-wrap items-center gap-3 pt-3">
+              <OnboardingModal videoId="dQw4w9WgXcQ" />
+
+              <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl text-xs text-neutral-400">
                 <Clock className="w-3.5 h-3.5 text-neutral-400" />
                 {currentTime}
               </span>
-              <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl">
+
+              <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl text-xs text-neutral-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 Isolated & Encrypted Session
               </span>
