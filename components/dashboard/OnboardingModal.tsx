@@ -7,12 +7,9 @@ import {
   CheckSquare, 
   Bot, 
   BrainCircuit, 
-  FileText, 
   Calendar, 
-  Scale, 
   ArrowRight,
-  ShieldCheck,
-  Zap
+  ShieldCheck
 } from "lucide-react";
 
 export default function OnboardingModal() {
@@ -46,7 +43,7 @@ export default function OnboardingModal() {
     {
       icon: BrainCircuit,
       title: "Memory Vault",
-      description: "Log breakthroughs, audio thoughts, and meeting summaries with persistent cloud storage.",
+      description: "Log breakthroughs, audio thoughts, and meeting summaries securely.",
       color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
     },
     {
@@ -59,56 +56,57 @@ export default function OnboardingModal() {
 
   return (
     <>
-      {/* Trigger Button in Hero */}
+      {/* Trigger Button in Dashboard Hero */}
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition cursor-pointer"
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition cursor-pointer"
       >
         <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
         <span>Quick Feature Guide</span>
       </button>
 
-      {/* Aesthetic Modal Popup */}
+      {/* Modal Backdrop & Container */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl bg-[#0e1017] border border-neutral-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
+          <div className="relative w-full max-w-lg max-h-[85vh] bg-[#0e1017] border border-neutral-800 rounded-3xl shadow-2xl flex flex-col my-auto overflow-hidden">
             
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800/80 bg-[#12141d]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center font-black text-black text-sm shadow-lg shadow-cyan-500/20">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800 bg-[#12141d] shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center font-black text-black text-xs shadow-md shadow-cyan-500/20">
                   R
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Welcome to RealityOS</h3>
-                  <p className="text-xs text-neutral-400">Your all-in-one personal operating system</p>
+                  <h3 className="text-sm font-bold text-white leading-none">Welcome to RealityOS</h3>
+                  <p className="text-[10px] text-neutral-400 mt-1">Quick workspace tour</p>
                 </div>
               </div>
 
               <button
                 onClick={handleClose}
                 className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer"
+                aria-label="Close modal"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Feature Walkthrough Grid */}
-            <div className="p-6 space-y-3 bg-[#0a0b0e]/95">
-              <p className="text-xs text-neutral-400 mb-2 font-medium">
-                Everything you need to organize your life is divided into dedicated modules:
+            {/* Modal Body (Scrollable on small screens) */}
+            <div className="p-4 sm:p-5 space-y-3 overflow-y-auto bg-[#0a0b0e]">
+              <p className="text-xs text-neutral-400 font-medium">
+                Everything is divided into focused modules:
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {steps.map((step) => {
                   const Icon = step.icon;
                   return (
                     <div
                       key={step.title}
-                      className="p-3.5 rounded-2xl bg-[#11131a] border border-neutral-800/80 space-y-2 hover:border-neutral-700 transition"
+                      className="p-3 rounded-2xl bg-[#11131a] border border-neutral-800 space-y-1.5"
                     >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${step.color}`}>
-                        <Icon className="w-4 h-4" />
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center border ${step.color}`}>
+                        <Icon className="w-3.5 h-3.5" />
                       </div>
                       <h4 className="text-xs font-bold text-white">{step.title}</h4>
                       <p className="text-[11px] text-neutral-400 leading-relaxed">
@@ -120,16 +118,16 @@ export default function OnboardingModal() {
               </div>
             </div>
 
-            {/* Footer Action */}
-            <div className="p-5 bg-[#0e1017] flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-neutral-800/80">
-              <div className="flex items-center gap-2 text-xs text-neutral-400">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Isolated & secure user session</span>
+            {/* Modal Footer */}
+            <div className="p-4 bg-[#0e1017] flex items-center justify-between gap-3 border-t border-neutral-800 shrink-0">
+              <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Encrypted session</span>
               </div>
 
               <button
                 onClick={handleClose}
-                className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-500 hover:opacity-95 text-black font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                className="px-5 py-2 bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-500 text-black font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer shrink-0"
               >
                 <span>Enter Workspace</span>
                 <ArrowRight className="w-3.5 h-3.5" />
