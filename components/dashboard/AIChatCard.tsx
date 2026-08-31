@@ -447,7 +447,7 @@ export const AIChatCard = () => {
 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-[10px] text-neutral-400 font-mono">
             <Brain size={12} className="text-cyan-400" />
-            <span>Gemini 2.5 Flash</span>
+            <span>Gemini 3.6 Flash</span>
           </div>
         </div>
 
