@@ -132,7 +132,7 @@ export default function DashboardPage() {
 
             {/* Quick Action Badges & Demo Tour Modal */}
             <div className="flex flex-wrap items-center gap-3 pt-3">
-              <OnboardingModal videoId="dQw4w9WgXcQ" />
+              <OnboardingModal />
 
               <span className="flex items-center gap-1.5 bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl text-xs text-neutral-400">
                 <Clock className="w-3.5 h-3.5 text-neutral-400" />

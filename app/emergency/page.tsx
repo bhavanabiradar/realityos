@@ -12,9 +12,11 @@ import {
   ShieldAlert,
   HeartPulse,
   Users,
+  Loader2,
 } from "lucide-react";
 
-import { GlassCard } from "../../components/ui/GlassCard";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { fetchEmergencyContacts, addEmergencyContact } from "@/lib/supabaseStore";
 
 type Contact = {
   name: string;
@@ -43,38 +45,49 @@ const DEFAULT_DATA: EmergencyData = {
 };
 
 export default function EmergencyPage() {
-  const [contacts, setContacts] =
-    useState<EmergencyData>(DEFAULT_DATA);
-
+  const [contacts, setContacts] = useState<EmergencyData>(DEFAULT_DATA);
   const [editing, setEditing] = useState(false);
-
-  const [draft, setDraft] =
-    useState<EmergencyData>(DEFAULT_DATA);
-
+  const [draft, setDraft] = useState<EmergencyData>(DEFAULT_DATA);
   const [savedMessage, setSavedMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // ----------------------------------------
-  // LOAD SAVED CONTACTS
+  // 1. LOAD SAVED CONTACTS FROM SUPABASE
   // ----------------------------------------
-
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("realityos-emergency-contacts");
+    async function loadContacts() {
+      setLoading(true);
+      try {
+        const savedList = await fetchEmergencyContacts();
+        if (savedList && savedList.length > 0) {
+          const loadedData: EmergencyData = { ...DEFAULT_DATA };
+          
+          savedList.forEach((item: any) => {
+            if (item.relation === "emergency" || item.relation === "medical" || item.relation === "family") {
+              loadedData[item.relation as keyof EmergencyData] = {
+                name: item.name || "",
+                phone: item.phone || "",
+              };
+            }
+          });
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setContacts(parsed);
-        setDraft(parsed);
+          setContacts(loadedData);
+          setDraft(loadedData);
+        }
+      } catch (error) {
+        console.error("Could not load emergency contacts:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Could not load emergency contacts:", error);
     }
+
+    loadContacts();
   }, []);
 
   // ----------------------------------------
   // OPEN EDIT MODE
   // ----------------------------------------
-
   const openEditor = () => {
     setDraft(contacts);
     setEditing(true);
@@ -82,33 +95,35 @@ export default function EmergencyPage() {
   };
 
   // ----------------------------------------
-  // SAVE CONTACTS
+  // 2. SAVE CONTACTS TO SUPABASE DATABASE
   // ----------------------------------------
-
-  const saveContacts = () => {
+  const saveContacts = async () => {
+    setIsSaving(true);
     try {
-      localStorage.setItem(
-        "realityos-emergency-contacts",
-        JSON.stringify(draft)
-      );
+      // Save all three categories into Supabase
+      await Promise.all([
+        addEmergencyContact(draft.emergency.name, "emergency", draft.emergency.phone),
+        addEmergencyContact(draft.medical.name, "medical", draft.medical.phone),
+        addEmergencyContact(draft.family.name, "family", draft.family.phone),
+      ]);
 
       setContacts(draft);
       setEditing(false);
-
-      setSavedMessage("Emergency contacts saved");
+      setSavedMessage("Emergency contacts synced with database");
 
       setTimeout(() => {
         setSavedMessage("");
-      }, 2500);
+      }, 3000);
     } catch (error) {
       console.error("Could not save contacts:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   // ----------------------------------------
-  // UPDATE CONTACT
+  // UPDATE CONTACT DRAFT
   // ----------------------------------------
-
   const updateContact = (
     type: keyof EmergencyData,
     field: keyof Contact,
@@ -126,7 +141,6 @@ export default function EmergencyPage() {
   // ----------------------------------------
   // CALL CONTACT
   // ----------------------------------------
-
   const callContact = (phone: string) => {
     if (!phone.trim()) {
       alert("No phone number is saved for this contact.");
@@ -139,7 +153,6 @@ export default function EmergencyPage() {
   // ----------------------------------------
   // CLEAR CONTACT
   // ----------------------------------------
-
   const clearContact = (type: keyof EmergencyData) => {
     setDraft((previous) => ({
       ...previous,
@@ -151,9 +164,8 @@ export default function EmergencyPage() {
   };
 
   // ----------------------------------------
-  // CONTACT CARD
+  // CONTACT CARD SUB-COMPONENT
   // ----------------------------------------
-
   const ContactCard = ({
     type,
     label,
@@ -233,7 +245,7 @@ export default function EmergencyPage() {
             <button
               type="button"
               onClick={() => callContact(contact.phone)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 type === "emergency"
                   ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
                   : "bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20"
@@ -246,7 +258,7 @@ export default function EmergencyPage() {
             <button
               type="button"
               onClick={openEditor}
-              className="px-4 rounded-xl border border-white/5 bg-white/[0.02] text-zinc-500 hover:text-white hover:bg-white/5 transition-all"
+              className="px-4 rounded-xl border border-white/5 bg-white/[0.02] text-zinc-500 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
               title="Edit contacts"
             >
               <Pencil size={14} />
@@ -264,7 +276,6 @@ export default function EmergencyPage() {
         {/* -------------------------------- */}
         {/* HEADER */}
         {/* -------------------------------- */}
-
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
           <div>
             <p className="text-[10px] uppercase tracking-[0.35em] text-red-400 font-bold mb-2">
@@ -295,7 +306,7 @@ export default function EmergencyPage() {
             <button
               type="button"
               onClick={openEditor}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-zinc-300 hover:text-white hover:bg-white/10 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-zinc-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             >
               <Pencil size={14} />
               Edit Contacts
@@ -306,7 +317,6 @@ export default function EmergencyPage() {
         {/* -------------------------------- */}
         {/* WARNING BANNER */}
         {/* -------------------------------- */}
-
         <GlassCard className="p-5 mb-6 border-red-500/10">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
@@ -331,39 +341,44 @@ export default function EmergencyPage() {
         </GlassCard>
 
         {/* -------------------------------- */}
-        {/* CONTACTS */}
+        {/* CONTACTS DISPLAY */}
         {/* -------------------------------- */}
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-zinc-500">
+            <Loader2 className="w-6 h-6 animate-spin text-red-400 mb-2" />
+            <span className="text-xs">Loading emergency contacts...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <ContactCard
+              type="emergency"
+              label="Primary"
+              icon={AlertCircle}
+              contact={contacts.emergency}
+              description="National emergency response number"
+            />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <ContactCard
-            type="emergency"
-            label="Primary"
-            icon={AlertCircle}
-            contact={contacts.emergency}
-            description="National emergency response number"
-          />
+            <ContactCard
+              type="medical"
+              label="Medical"
+              icon={HeartPulse}
+              contact={contacts.medical}
+              description="Your saved medical care contact"
+            />
 
-          <ContactCard
-            type="medical"
-            label="Medical"
-            icon={HeartPulse}
-            contact={contacts.medical}
-            description="Your saved medical care contact"
-          />
-
-          <ContactCard
-            type="family"
-            label="Family"
-            icon={Users}
-            contact={contacts.family}
-            description="Your trusted emergency contact"
-          />
-        </div>
+            <ContactCard
+              type="family"
+              label="Family"
+              icon={Users}
+              contact={contacts.family}
+              description="Your trusted emergency contact"
+            />
+          </div>
+        )}
 
         {/* -------------------------------- */}
         {/* EDIT MODAL */}
         {/* -------------------------------- */}
-
         {editing && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
             {/* Backdrop */}
@@ -372,7 +387,7 @@ export default function EmergencyPage() {
               onClick={() => setEditing(false)}
             />
 
-            {/* Modal */}
+            {/* Modal Box */}
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -393,7 +408,7 @@ export default function EmergencyPage() {
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-all"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -489,7 +504,7 @@ export default function EmergencyPage() {
                   <button
                     type="button"
                     onClick={() => clearContact("medical")}
-                    className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors"
+                    className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors cursor-pointer"
                   >
                     <Trash2 size={12} />
                     Clear number
@@ -552,7 +567,7 @@ export default function EmergencyPage() {
                   <button
                     type="button"
                     onClick={() => clearContact("family")}
-                    className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors"
+                    className="mt-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors cursor-pointer"
                   >
                     <Trash2 size={12} />
                     Clear number
@@ -565,18 +580,19 @@ export default function EmergencyPage() {
                 <button
                   type="button"
                   onClick={() => setEditing(false)}
-                  className="px-5 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+                  className="px-5 py-2.5 rounded-xl border border-white/10 text-xs font-bold text-zinc-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={saveContacts}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-400 hover:bg-blue-500/20 transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-400 hover:bg-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  <Save size={14} />
-                  Save Changes
+                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  <span>{isSaving ? "Saving..." : "Save Changes"}</span>
                 </button>
               </div>
             </motion.div>

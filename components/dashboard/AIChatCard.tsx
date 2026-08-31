@@ -10,25 +10,24 @@ import {
   Zap,
   Plus,
   Search,
-  Trash2,
-  Pencil,
   MessageSquare,
   X,
+  Pencil,
 } from "lucide-react";
 
 import {
-  getChats,
-  getChat,
-  updateChatMessages,
-  renameChat,
-  deleteChat,
   getTasks,
   getEvents,
   getDecisions,
-  getCrossChatMemories,
-  type RealityChat,
-  type RealityChatMessage,
 } from "@/lib/realityStore";
+import { fetchUserChatHistory, saveChatMessage } from "@/lib/supabaseStore";
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at?: string;
+}
 
 const quickActions = [
   "Prepare notes",
@@ -36,7 +35,7 @@ const quickActions = [
   "Summarize email",
 ];
 
-const welcomeMessage: RealityChatMessage = {
+const welcomeMessage: ChatMessage = {
   id: "welcome",
   role: "assistant",
   content:
@@ -44,88 +43,58 @@ const welcomeMessage: RealityChatMessage = {
 };
 
 export const AIChatCard = () => {
-  const [chats, setChats] = useState<RealityChat[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<RealityChatMessage[]>([welcomeMessage]);
-
+  const [messages, setMessages] = useState<ChatMessage[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingMessageText, setEditingMessageText] = useState("");
 
-  const [pendingDeleteChatId, setPendingDeleteChatId] = useState<string | null>(null);
-
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   /* =========================================================
-     1. INITIALIZE SAVED CHATS ON LOAD
+     1. INITIALIZE SAVED CHAT HISTORY FROM SUPABASE
   ========================================================= */
   useEffect(() => {
-    const savedChats = getChats();
-    setChats(savedChats);
-    setActiveChatId(null);
-    setMessages([welcomeMessage]);
+    async function loadHistory() {
+      setIsLoading(true);
+      try {
+        const history = await fetchUserChatHistory();
+        if (history && history.length > 0) {
+          setMessages([welcomeMessage, ...history]);
+        } else {
+          setMessages([welcomeMessage]);
+        }
+      } catch (err) {
+        console.error("Failed to load chat history:", err);
+      } finally {
+        setIsLoading(false);
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          }
+        }, 50);
+      }
+    }
+    loadHistory();
   }, []);
 
   /* =========================================================
-     2. LIVE SEARCH
+     2. FILTER / SEARCH MESSAGES
   ========================================================= */
-  const filteredChats = useMemo(() => {
+  const displayedMessages = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const sorted = [...chats].sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-
-    if (!query) return sorted;
-
-    return sorted.filter((chat) => {
-      const titleMatch = chat.title.toLowerCase().includes(query);
-      const messageMatch = chat.messages.some((m) =>
-        m.content.toLowerCase().includes(query)
-      );
-      return titleMatch || messageMatch;
-    });
-  }, [chats, search]);
-
-  const refreshChats = () => {
-    setChats(getChats());
-  };
+    if (!query) return messages;
+    return messages.filter((m) => m.content.toLowerCase().includes(query));
+  }, [messages, search]);
 
   /* =========================================================
-     3. OPEN / CONTINUE OLD CHAT
-  ========================================================= */
-  const openChat = (chatId: string) => {
-    if (isLoading) return;
-
-    const chat = getChat(chatId);
-    if (!chat) return;
-
-    setActiveChatId(chat.id);
-    setMessages(chat.messages && chat.messages.length > 0 ? chat.messages : [welcomeMessage]);
-    setError("");
-    setInput("");
-
-    setTimeout(() => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-      }
-    }, 50);
-  };
-
-  /* =========================================================
-     4. NEW CHAT DRAFT
+     3. NEW CHAT RESET
   ========================================================= */
   const handleNewChat = () => {
     if (isLoading) return;
-    setActiveChatId(null);
     setMessages([welcomeMessage]);
     setInput("");
     setError("");
@@ -133,33 +102,25 @@ export const AIChatCard = () => {
   };
 
   /* =========================================================
-     5. SEND MESSAGE & CONTINUE ON EXISTING CHAT
+     4. SEND MESSAGE & PERSIST TO SUPABASE
   ========================================================= */
   const sendMessage = async (
     promptOverride?: string,
-    baseMessages?: RealityChatMessage[]
+    baseMessages?: ChatMessage[]
   ) => {
     const trimmedInput = (promptOverride ?? input).trim();
     if (!trimmedInput || isLoading) return;
 
-    const targetChatId = activeChatId || `chat-${Date.now()}`;
-    if (!activeChatId) {
-      setActiveChatId(targetChatId);
-    }
-
-    const userMessage: RealityChatMessage = {
-      id: `${Date.now()}-user`,
+    const tempUserMessage: ChatMessage = {
+      id: `temp-${Date.now()}-user`,
       role: "user",
       content: trimmedInput,
     };
 
     const currentBase = baseMessages ?? messages;
-    const conversationForRequest = [...currentBase, userMessage];
+    const conversationForRequest = [...currentBase, tempUserMessage];
 
     setMessages(conversationForRequest);
-    updateChatMessages(targetChatId, conversationForRequest);
-    refreshChats();
-
     setInput("");
     setError("");
     setIsLoading(true);
@@ -171,7 +132,11 @@ export const AIChatCard = () => {
     }, 50);
 
     try {
-      const pastMemories = getCrossChatMemories(targetChatId);
+      // Persist User Message to Supabase
+      const savedUserMsg = await saveChatMessage("user", trimmedInput);
+      if (savedUserMsg) {
+        tempUserMessage.id = savedUserMsg.id;
+      }
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -187,7 +152,6 @@ export const AIChatCard = () => {
             events: getEvents(),
             decisions: getDecisions(),
           },
-          pastMemories,
         }),
       });
 
@@ -200,33 +164,21 @@ export const AIChatCard = () => {
       }
 
       if (!data?.text) {
-        throw new Error("Gemini returned an empty response.");
+        throw new Error("Assistant returned an empty response.");
       }
 
-      const assistantReply: RealityChatMessage = {
-        id: `${Date.now()}-assistant`,
+      const replyText = String(data.text).trim();
+
+      // Persist Assistant Reply to Supabase
+      const savedAssistantMsg = await saveChatMessage("assistant", replyText);
+
+      const assistantReply: ChatMessage = {
+        id: savedAssistantMsg ? savedAssistantMsg.id : `temp-${Date.now()}-assistant`,
         role: "assistant",
-        content: String(data.text).trim(),
+        content: replyText,
       };
 
-      const updatedMessages = [...conversationForRequest, assistantReply];
-
-      setMessages(updatedMessages);
-      updateChatMessages(targetChatId, updatedMessages);
-
-      const currentChat = getChat(targetChatId);
-      if (
-        currentChat &&
-        (currentChat.title === "New Chat" || currentChat.title === "Conversation")
-      ) {
-        const generatedTitle =
-          trimmedInput.length > 25
-            ? `${trimmedInput.slice(0, 25)}...`
-            : trimmedInput;
-        renameChat(targetChatId, generatedTitle);
-      }
-
-      refreshChats();
+      setMessages([...conversationForRequest, assistantReply]);
 
       setTimeout(() => {
         if (messagesContainerRef.current) {
@@ -245,57 +197,9 @@ export const AIChatCard = () => {
   };
 
   /* =========================================================
-     6. DELETE CONVERSATION
+     5. EDIT SENT MESSAGE
   ========================================================= */
-  const handleDeleteChat = (event: React.MouseEvent, chatId: string) => {
-    event.stopPropagation();
-    if (isLoading) return;
-    setPendingDeleteChatId(chatId);
-  };
-
-  const confirmDeleteChat = () => {
-    if (!pendingDeleteChatId || isLoading) return;
-
-    const chatId = pendingDeleteChatId;
-    deleteChat(chatId);
-
-    const remainingChats = getChats();
-    setChats(remainingChats);
-
-    if (chatId === activeChatId) {
-      setActiveChatId(null);
-      setMessages([welcomeMessage]);
-    }
-
-    setPendingDeleteChatId(null);
-  };
-
-  /* =========================================================
-     7. RENAME CONVERSATION
-  ========================================================= */
-  const startRename = (event: React.MouseEvent, chat: RealityChat) => {
-    event.stopPropagation();
-    setEditingChatId(chat.id);
-    setEditingTitle(chat.title);
-  };
-
-  const saveRename = () => {
-    if (!editingChatId) return;
-    const cleanTitle = editingTitle.trim();
-    if (!cleanTitle) {
-      setEditingChatId(null);
-      return;
-    }
-    renameChat(editingChatId, cleanTitle);
-    refreshChats();
-    setEditingChatId(null);
-    setEditingTitle("");
-  };
-
-  /* =========================================================
-     8. EDIT SENT MESSAGES
-  ========================================================= */
-  const startEditMessage = (message: RealityChatMessage) => {
+  const startEditMessage = (message: ChatMessage) => {
     if (isLoading || message.role !== "user") return;
     setEditingMessageId(message.id);
     setEditingMessageText(message.content);
@@ -322,7 +226,7 @@ export const AIChatCard = () => {
   };
 
   /* =========================================================
-     9. KEYBOARD ENTER
+     6. KEYBOARD ENTER HANDLER
   ========================================================= */
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -336,13 +240,12 @@ export const AIChatCard = () => {
 
       {/* ================= SIDEBAR ================= */}
       <GlassCard className="relative flex flex-col p-4" style={{ height: "620px" }}>
-        
         {/* NEW CHAT BUTTON */}
         <button
           type="button"
           onClick={handleNewChat}
           disabled={isLoading}
-          className="mb-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mb-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
         >
           <Plus size={15} />
           New Chat
@@ -357,7 +260,7 @@ export const AIChatCard = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chats..."
+            placeholder="Search conversation..."
             className="w-full rounded-xl border border-white/10 bg-zinc-950/50 py-2 pl-8 pr-7 text-xs text-white outline-none transition focus:border-blue-500/40 placeholder:text-zinc-600"
           />
           {search && (
@@ -375,90 +278,25 @@ export const AIChatCard = () => {
         <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
           <MessageSquare size={13} className="text-blue-400" />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            Recent Chats
+            Session History
           </span>
         </div>
 
-        {/* CHAT LIST */}
-        <div 
-          className="space-y-1 pr-1"
-          style={{ height: "420px", overflowY: "auto" }}
-        >
-          {filteredChats.length === 0 ? (
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center text-xs text-zinc-600">
-              No previous chats.
-            </div>
-          ) : (
-            filteredChats.map((chat) => {
-              const isActive = chat.id === activeChatId;
-              const isEditing = editingChatId === chat.id;
+        {/* CONVERSATION OVERVIEW STATS */}
+        <div className="space-y-2 pr-1 overflow-y-auto">
+          <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02] space-y-1.5">
+            <p className="text-[11px] font-medium text-zinc-300">Cloud Sync Active</p>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              Your messages and AI summaries are securely linked to your account.
+            </p>
+          </div>
 
-              return (
-                <div
-                  key={chat.id}
-                  onClick={() => openChat(chat.id)}
-                  className={`group relative cursor-pointer rounded-xl border p-2.5 transition ${
-                    isActive
-                      ? "border-blue-500/30 bg-blue-500/15"
-                      : "border-transparent hover:border-white/10 hover:bg-white/5"
-                  }`}
-                >
-                  {isEditing ? (
-                    <input
-                      autoFocus
-                      value={editingTitle}
-                      onChange={(e) => setEditingTitle(e.target.value)}
-                      onBlur={saveRename}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveRename();
-                        if (e.key === "Escape") setEditingChatId(null);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full rounded-md border border-white/10 bg-zinc-950 px-2 py-1 text-xs text-white outline-none"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex items-start gap-2 pr-12">
-                        <MessageSquare
-                          size={13}
-                          className={`mt-0.5 shrink-0 ${
-                            isActive ? "text-blue-400" : "text-zinc-600"
-                          }`}
-                        />
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-medium text-zinc-200">
-                            {chat.title}
-                          </p>
-                          <p className="mt-0.5 text-[10px] text-zinc-600">
-                            {chat.messages.filter((m) => m.role === "user").length} messages
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="absolute right-2 top-2.5 hidden items-center gap-1 group-hover:flex">
-                        <button
-                          type="button"
-                          title="Rename chat"
-                          onClick={(e) => startRename(e, chat)}
-                          className="rounded-md p-1 text-zinc-500 hover:bg-white/10 hover:text-white"
-                        >
-                          <Pencil size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          title="Delete chat"
-                          onClick={(e) => handleDeleteChat(e, chat.id)}
-                          className="rounded-md p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })
-          )}
+          <div className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+            <p className="text-[10px] text-zinc-400">Total Saved Messages</p>
+            <p className="text-lg font-bold text-white mt-0.5">
+              {messages.filter((m) => m.id !== "welcome").length}
+            </p>
+          </div>
         </div>
       </GlassCard>
 
@@ -485,7 +323,7 @@ export const AIChatCard = () => {
           </div>
         </div>
 
-        {/* FORCED INDEPENDENT SCROLL MESSAGES CONTAINER */}
+        {/* MESSAGES CONTAINER */}
         <div
           ref={messagesContainerRef}
           className="space-y-4 pr-2"
@@ -496,7 +334,7 @@ export const AIChatCard = () => {
             overflowX: "hidden" 
           }}
         >
-          {messages.map((message) => {
+          {displayedMessages.map((message) => {
             const isEditing = editingMessageId === message.id;
 
             return (
@@ -523,7 +361,7 @@ export const AIChatCard = () => {
                       <button
                         type="button"
                         onClick={cancelEditMessage}
-                        className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-zinc-400 hover:bg-white/5 hover:text-white"
+                        className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] text-zinc-400 hover:bg-white/5 hover:text-white cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -531,7 +369,7 @@ export const AIChatCard = () => {
                         type="button"
                         onClick={() => void saveEditMessage()}
                         disabled={!editingMessageText.trim()}
-                        className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                       >
                         Save & Send
                       </button>
@@ -553,7 +391,7 @@ export const AIChatCard = () => {
                         title="Edit message"
                         onClick={() => startEditMessage(message)}
                         disabled={isLoading}
-                        className="absolute -left-8 top-1/2 hidden -translate-y-1/2 rounded-md p-1 text-zinc-600 transition group-hover:block hover:bg-white/10 hover:text-white disabled:opacity-50"
+                        className="absolute -left-8 top-1/2 hidden -translate-y-1/2 rounded-md p-1 text-zinc-600 transition group-hover:block hover:bg-white/10 hover:text-white disabled:opacity-50 cursor-pointer"
                       >
                         <Pencil size={12} />
                       </button>
@@ -591,14 +429,14 @@ export const AIChatCard = () => {
               type="button"
               onClick={() => void sendMessage(suggestion)}
               disabled={isLoading}
-              className="whitespace-nowrap rounded-full border border-white/5 bg-zinc-800/40 px-3 py-1 text-[11px] text-zinc-400 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="whitespace-nowrap rounded-full border border-white/5 bg-zinc-800/40 px-3 py-1 text-[11px] text-zinc-400 transition hover:border-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             >
               {suggestion}
             </button>
           ))}
         </div>
 
-        {/* ALWAYS VISIBLE PINNED INPUT BAR */}
+        {/* PINNED INPUT BAR */}
         <div className="relative shrink-0 pt-1">
           <textarea
             value={input}
@@ -615,7 +453,7 @@ export const AIChatCard = () => {
             onClick={() => void sendMessage()}
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
-            className="absolute right-2.5 top-[calc(50%+2px)] flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-white text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="absolute right-2.5 top-[calc(50%+2px)] flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg bg-white text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
           >
             <ArrowRight size={14} />
           </button>
@@ -628,36 +466,6 @@ export const AIChatCard = () => {
             {isLoading ? "Processing…" : "RealityOS AI"}
           </div>
         </div>
-
-        {/* DELETE CONFIRMATION MODAL */}
-        {pendingDeleteChatId && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-            <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-2xl">
-              <h3 className="text-sm font-semibold text-white">
-                Delete conversation?
-              </h3>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-                Are you sure you want to delete this conversation? This cannot be undone.
-              </p>
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPendingDeleteChatId(null)}
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:bg-white/5 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeleteChat}
-                  className="rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </GlassCard>
     </div>
   );

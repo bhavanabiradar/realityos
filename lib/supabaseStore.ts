@@ -201,6 +201,46 @@ export async function deleteDatabaseMemory(id: string) {
 }
 
 // =======================
+// AI CHAT HISTORY
+// =======================
+
+export async function fetchUserChatHistory() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error loading chat history:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function saveChatMessage(role: "user" | "assistant", content: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .insert([{ user_id: user.id, role, content }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error saving chat message:", error);
+    return null;
+  }
+  return data;
+}
+
+// =======================
 // DOCUMENTS
 // =======================
 
@@ -245,7 +285,7 @@ export async function createDatabaseDocument(
     .single();
 
   if (error) {
-    console.error("Error creating document:", error);
+    console.error("Error adding document:", error);
     return null;
   }
   return data;
@@ -263,6 +303,67 @@ export async function deleteDatabaseDocument(id: string) {
     .eq("user_id", user.id);
 
   if (error) console.error("Error deleting document:", error);
+}
+
+// =======================
+// EMERGENCY CONTACTS
+// =======================
+
+export async function fetchEmergencyContacts() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("emergency_contacts")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error loading emergency contacts:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function addEmergencyContact(name: string, relation: string, phone: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("emergency_contacts")
+    .insert([
+      {
+        user_id: user.id,
+        name,
+        relation,
+        phone,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding emergency contact:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteEmergencyContact(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("emergency_contacts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) console.error("Error deleting emergency contact:", error);
 }
 
 // =======================
