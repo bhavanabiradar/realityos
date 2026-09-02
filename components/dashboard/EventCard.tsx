@@ -10,7 +10,13 @@ import {
   Plus,
   Trash2,
   X,
+  Loader2,
 } from "lucide-react";
+import {
+  fetchUserEvents,
+  createDatabaseEvent,
+  deleteDatabaseEvent,
+} from "@/lib/supabaseStore";
 import {
   addEvent,
   deleteEvent,
@@ -21,6 +27,8 @@ import { cn } from "@/lib/utils";
 
 export const EventCard = () => {
   const [events, setEvents] = useState<RealityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -29,34 +37,82 @@ export const EventCard = () => {
   const [type, setType] = useState("Event");
 
   useEffect(() => {
-    setEvents(getEvents());
+    async function loadEvents() {
+      setLoading(true);
+      try {
+        const dbEvents = await fetchUserEvents();
+        if (dbEvents && dbEvents.length > 0) {
+          const mappedEvents: RealityEvent[] = dbEvents.map((e: any) => ({
+  id: e.id,
+  title: e.title,
+  time: e.time,
+  location: e.location || "",
+  type: e.status || "Event",
+  createdAt: e.created_at || new Date().toISOString(),
+}));
+          setEvents(mappedEvents);
+        } else {
+          setEvents(getEvents());
+        }
+      } catch (err) {
+        console.error("Failed to load events from Supabase:", err);
+        setEvents(getEvents());
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadEvents();
   }, []);
 
-  const handleAddEvent = () => {
-    if (!title.trim() || !time.trim()) {
+  const handleAddEvent = async () => {
+    if (!title.trim() || !time.trim() || isSubmitting) {
       return;
     }
 
-    const newEvent = addEvent(
-      title.trim(),
-      time.trim(),
-      location.trim(),
-      type
-    );
-if (!newEvent) return;
+    setIsSubmitting(true);
+    try {
+      const dbEvent = await createDatabaseEvent(
+        title.trim(),
+        time.trim(),
+        location.trim() || "Workspace"
+      );
 
-setEvents((current) => [newEvent, ...current]);
+      const newEvent: RealityEvent = {
+  id: dbEvent?.id || `event-${Date.now()}`,
+  title: title.trim(),
+  time: time.trim(),
+  location: location.trim(),
+  type,
+  createdAt: new Date().toISOString(),
+};
 
-    setTitle("");
-    setTime("");
-    setLocation("");
-    setType("Event");
-    setShowModal(false);
+      // Sync local realityStore for AI Chat context
+      addEvent(newEvent.title, newEvent.time, newEvent.location, newEvent.type);
+
+      setEvents((current) => [newEvent, ...current]);
+
+      setTitle("");
+      setTime("");
+      setLocation("");
+      setType("Event");
+      setShowModal(false);
+    } catch (err) {
+      console.error("Failed to save event:", err);
+      alert("Failed to save event. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteEvent = (id: string) => {
-    const updated = deleteEvent(id);
-    setEvents(updated);
+  const handleDeleteEvent = async (id: string) => {
+    setEvents((current) => current.filter((e) => e.id !== id));
+    deleteEvent(id);
+    try {
+      await deleteDatabaseEvent(id);
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+    }
   };
 
   return (
@@ -78,7 +134,7 @@ setEvents((current) => [newEvent, ...current]);
           <button
             type="button"
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition hover:border-purple-400/40 hover:text-white"
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition hover:border-purple-400/40 hover:text-white cursor-pointer"
           >
             <Plus size={12} />
             Add Event
@@ -87,7 +143,12 @@ setEvents((current) => [newEvent, ...current]);
 
         {/* EVENTS */}
         <div className="space-y-6">
-          {events.length === 0 ? (
+          {loading ? (
+            <div className="py-10 text-center flex flex-col items-center justify-center">
+              <Loader2 className="w-5 h-5 animate-spin text-purple-400 mb-2" />
+              <p className="text-xs text-zinc-500">Loading schedule...</p>
+            </div>
+          ) : events.length === 0 ? (
             <div className="py-10 text-center">
               <Calendar
                 size={28}
@@ -165,7 +226,7 @@ setEvents((current) => [newEvent, ...current]);
                         handleDeleteEvent(event.id)
                       }
                       aria-label={`Delete ${event.title}`}
-                      className="opacity-0 group-hover:opacity-100 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/5 text-zinc-600 transition hover:border-red-500/20 hover:text-red-400"
+                      className="opacity-0 group-hover:opacity-100 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/5 text-zinc-600 transition hover:border-red-500/20 hover:text-red-400 cursor-pointer"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -222,7 +283,7 @@ setEvents((current) => [newEvent, ...current]);
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-zinc-500 transition hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 text-zinc-500 transition hover:text-white cursor-pointer"
               >
                 <X size={15} />
               </button>
@@ -287,7 +348,7 @@ setEvents((current) => [newEvent, ...current]);
                 onChange={(e) =>
                   setType(e.target.value)
                 }
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-purple-400/50"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-purple-400/50 cursor-pointer"
               >
                 <option value="Event">Event</option>
                 <option value="Study">Study</option>
@@ -302,7 +363,7 @@ setEvents((current) => [newEvent, ...current]);
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-400 transition hover:text-white"
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-400 transition hover:text-white cursor-pointer"
               >
                 Cancel
               </button>
@@ -311,11 +372,18 @@ setEvents((current) => [newEvent, ...current]);
                 type="button"
                 onClick={handleAddEvent}
                 disabled={
-                  !title.trim() || !time.trim()
+                  !title.trim() || !time.trim() || isSubmitting
                 }
-                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
               >
-                + Save Event
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>+ Save Event</span>
+                )}
               </button>
             </div>
           </motion.div>
