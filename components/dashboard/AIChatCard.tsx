@@ -359,7 +359,7 @@ export const AIChatCard = () => {
   };
 
   return (
-    <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] h-[680px] max-h-[calc(100vh-160px)]">
+    <div className="grid w-full h-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
       {/* ================= LEFT SIDEBAR ================= */}
       <GlassCard className="relative flex flex-col p-4 border-neutral-800/80 bg-[#0d0e14]/90 h-full overflow-hidden">
         {/* NEW CHAT */}
@@ -485,7 +485,7 @@ export const AIChatCard = () => {
       </GlassCard>
 
       {/* ================= MAIN CHAT ================= */}
-      <GlassCard className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90 h-full overflow-hidden">
+      <GlassCard className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90 h-full min-h-0 overflow-hidden">
         {/* HEADER */}
         <div className="mb-3 flex shrink-0 items-center justify-between border-b border-neutral-800/80 pb-3">
           <div className="flex items-center gap-2.5">
@@ -508,13 +508,17 @@ export const AIChatCard = () => {
 
         {/* SCROLLABLE MESSAGE AREA */}
         <div
-          ref={messagesContainerRef}
-          className="flex-1 min-h-0 space-y-4 pr-3 overflow-y-scroll overflow-x-hidden"
-          style={{
-            scrollbarWidth: "thin",
-            scrollbarColor: "rgba(255,255,255,0.2) transparent",
-          }}
-        >
+  ref={messagesContainerRef}
+  className="flex-1 min-h-0 space-y-4 pr-3 overflow-y-auto overflow-x-hidden"
+  style={{
+    height: "100%",
+    maxHeight: "100%",
+    overflowY: "scroll",
+    WebkitOverflowScrolling: "touch",
+    scrollbarWidth: "thin",
+    scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
+  }}
+>
           {messages.map((message) => (
             <motion.div
               key={message.id}
