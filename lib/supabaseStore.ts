@@ -363,3 +363,26 @@ export async function deleteDailyPriority(id: string) {
 
   if (error) console.error("Error deleting priority:", error);
 }
+export async function updateSessionChatMessage(
+  messageId: string,
+  content: string
+) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .update({ content })
+    .eq("id", messageId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to update chat message:", error);
+    throw error;
+  }
+
+  return data;
+}

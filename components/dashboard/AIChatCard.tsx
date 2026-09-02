@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { GlassCard } from "../ui/GlassCard";
+
 import {
   Sparkles,
   ArrowRight,
   Brain,
-  Zap,
   Plus,
   Search,
   Trash2,
@@ -18,6 +18,7 @@ import {
   FileText,
   Loader2,
   Check,
+  Video,
 } from "lucide-react";
 
 import {
@@ -27,9 +28,15 @@ import {
   deleteChatSession,
   fetchSessionMessages,
   saveSessionChatMessage,
+  updateSessionChatMessage,
   fetchUserDocuments,
 } from "@/lib/supabaseStore";
-import { getTasks, getEvents, getDecisions } from "@/lib/realityStore";
+
+import {
+  getTasks,
+  getEvents,
+  getDecisions,
+} from "@/lib/realityStore";
 
 interface ChatSession {
   id: string;
@@ -66,6 +73,9 @@ export const AIChatCard = () => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleText, setEditTitleText] = useState("");
 
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingMessageText, setEditingMessageText] = useState("");
+
   const [attachedFile, setAttachedFile] = useState<{
     file: File;
     previewUrl?: string;
@@ -74,19 +84,29 @@ export const AIChatCard = () => {
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  /* =========================================================
-     1. LOAD SESSIONS ON MOUNT
-  ========================================================= */
+  const scrollChatBottom = () => {
+    setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    }, 80);
+  };
+
   useEffect(() => {
     async function loadSessions() {
-      const data = await fetchChatSessions();
-      setSessions(data);
-      if (data.length > 0) {
-        selectSession(data[0].id);
-      } else {
-        startNewChat();
+      try {
+        const data = await fetchChatSessions();
+        setSessions(data);
+        if (data.length > 0) {
+          await selectSession(data[0].id);
+        } else {
+          await startNewChat();
+        }
+      } catch (err) {
+        console.error("Failed to load chat sessions:", err);
       }
     }
     loadSessions();
@@ -96,11 +116,15 @@ export const AIChatCard = () => {
     setActiveSessionId(sessionId);
     setIsLoading(true);
     setError("");
+    setEditingMessageId(null);
+    setEditingMessageText("");
+
     try {
       const msgs = await fetchSessionMessages(sessionId);
       setMessages(msgs.length > 0 ? msgs : [welcomeMessage]);
     } catch (err) {
       console.error(err);
+      setError("Failed to load this conversation.");
     } finally {
       setIsLoading(false);
       scrollChatBottom();
@@ -109,35 +133,31 @@ export const AIChatCard = () => {
 
   const startNewChat = async () => {
     if (isLoading) return;
-    const newSession = await createChatSession("New Chat");
-    if (newSession) {
-      setSessions((prev) => [newSession, ...prev]);
-      setActiveSessionId(newSession.id);
-      setMessages([welcomeMessage]);
-      setInput("");
-      setAttachedFile(null);
+    try {
+      const newSession = await createChatSession("New Chat");
+      if (newSession) {
+        setSessions((prev) => [newSession, ...prev]);
+        setActiveSessionId(newSession.id);
+        setMessages([welcomeMessage]);
+        setInput("");
+        setAttachedFile(null);
+        setEditingMessageId(null);
+        setEditingMessageText("");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create a new conversation.");
     }
   };
 
-  const scrollChatBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 60);
-  };
-
-  /* =========================================================
-     2. LIVE SEARCH SESSIONS
-  ========================================================= */
   const filteredSessions = useMemo(() => {
     if (!search.trim()) return sessions;
-    return sessions.filter((s) =>
-      s.title.toLowerCase().includes(search.toLowerCase())
+    const searchText = search.toLowerCase();
+    return sessions.filter((session) =>
+      session.title.toLowerCase().includes(searchText)
     );
   }, [sessions, search]);
 
-  /* =========================================================
-     3. ATTACHMENT HANDLER (PHOTOS & DOCUMENTS)
-  ========================================================= */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -145,22 +165,24 @@ export const AIChatCard = () => {
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
+      const isVisualFile =
+        file.type.startsWith("image/") || file.type.startsWith("video/");
+
       setAttachedFile({
         file,
         base64,
         mimeType: file.type,
-        previewUrl: file.type.startsWith("image/") ? base64 : undefined,
+        previewUrl: isVisualFile ? base64 : undefined,
       });
     };
     reader.readAsDataURL(file);
   };
 
-  /* =========================================================
-     4. SEND MESSAGE
-  ========================================================= */
   const sendMessage = async (promptOverride?: string) => {
     const textToSend = (promptOverride ?? input).trim();
-    if ((!textToSend && !attachedFile) || isLoading || !activeSessionId) return;
+    if ((!textToSend && !attachedFile) || isLoading || !activeSessionId) {
+      return;
+    }
 
     const currentSessionId = activeSessionId;
     const currentAttachment = attachedFile;
@@ -196,9 +218,9 @@ export const AIChatCard = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newConversation.map((m) => ({
-            role: m.role,
-            content: m.content,
+          messages: newConversation.map((message) => ({
+            role: message.role,
+            content: message.content,
           })),
           workspace: {
             tasks: getTasks(),
@@ -242,6 +264,7 @@ export const AIChatCard = () => {
           textToSend.length > 24
             ? `${textToSend.slice(0, 24)}...`
             : textToSend || "File Inquiry";
+
         await renameChatSession(currentSessionId, smartTitle);
         setSessions((prev) =>
           prev.map((s) =>
@@ -250,6 +273,7 @@ export const AIChatCard = () => {
         );
       }
     } catch (err: any) {
+      console.error(err);
       setError(err?.message || "Failed to reach AI Assistant");
     } finally {
       setIsLoading(false);
@@ -257,40 +281,88 @@ export const AIChatCard = () => {
     }
   };
 
-  /* =========================================================
-     5. RENAME & DELETE
-  ========================================================= */
+  const handleStartEditMessage = (message: ChatMessage) => {
+    if (message.role !== "user") return;
+    setEditingMessageId(message.id);
+    setEditingMessageText(message.content);
+  };
+
+  const handleCancelMessageEdit = () => {
+    setEditingMessageId(null);
+    setEditingMessageText("");
+  };
+
+  const handleSaveMessageEdit = async (messageId: string) => {
+    const updatedText = editingMessageText.trim();
+    if (!updatedText) {
+      handleCancelMessageEdit();
+      return;
+    }
+
+    try {
+      await updateSessionChatMessage(messageId, updatedText);
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId
+            ? { ...message, content: updatedText }
+            : message
+        )
+      );
+      handleCancelMessageEdit();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update message.");
+    }
+  };
+
   const handleSaveRename = async (sessionId: string) => {
     if (!editTitleText.trim()) {
       setEditingSessionId(null);
       return;
     }
-    await renameChatSession(sessionId, editTitleText.trim());
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId ? { ...s, title: editTitleText.trim() } : s
-      )
-    );
-    setEditingSessionId(null);
+
+    try {
+      await renameChatSession(sessionId, editTitleText.trim());
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === sessionId
+            ? { ...session, title: editTitleText.trim() }
+            : session
+        )
+      );
+      setEditingSessionId(null);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to rename conversation.");
+    }
   };
 
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
-    await deleteChatSession(sessionId);
-    const updated = sessions.filter((s) => s.id !== sessionId);
-    setSessions(updated);
-    if (activeSessionId === sessionId) {
-      if (updated.length > 0) selectSession(updated[0].id);
-      else startNewChat();
+    try {
+      await deleteChatSession(sessionId);
+      const updated = sessions.filter((session) => session.id !== sessionId);
+      setSessions(updated);
+
+      if (activeSessionId === sessionId) {
+        if (updated.length > 0) {
+          await selectSession(updated[0].id);
+        } else {
+          await startNewChat();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete conversation.");
     }
   };
 
   return (
-    <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] h-[720px] max-h-[82vh]">
-      {/* ================= SIDEBAR ================= */}
-      <GlassCard
-        className="relative flex flex-col p-4 border-neutral-800/80 bg-[#0d0e14]/90 h-full overflow-hidden"
-      >
+    <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] h-[680px] max-h-[calc(100vh-160px)]">
+      {/* ================= LEFT SIDEBAR ================= */}
+      <GlassCard className="relative flex flex-col p-4 border-neutral-800/80 bg-[#0d0e14]/90 h-full overflow-hidden">
+        {/* NEW CHAT */}
         <button
           onClick={startNewChat}
           disabled={isLoading}
@@ -300,6 +372,7 @@ export const AIChatCard = () => {
           <span>New Chat</span>
         </button>
 
+        {/* SEARCH */}
         <div className="relative mb-3 shrink-0">
           <Search
             size={14}
@@ -321,6 +394,7 @@ export const AIChatCard = () => {
           )}
         </div>
 
+        {/* CONVERSATION LABEL */}
         <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
           <MessageSquare size={13} className="text-cyan-400" />
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
@@ -328,7 +402,8 @@ export const AIChatCard = () => {
           </span>
         </div>
 
-        <div className="space-y-1 pr-1 overflow-y-auto flex-1 min-h-0">
+        {/* SCROLLABLE CONVERSATION LIST */}
+        <div className="space-y-1 pr-1 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
           {filteredSessions.length === 0 ? (
             <div className="rounded-xl border border-neutral-800/50 p-4 text-center text-xs text-neutral-500">
               No conversations found.
@@ -388,14 +463,14 @@ export const AIChatCard = () => {
                             setEditTitleText(session.title);
                           }}
                           className="p-1 rounded hover:bg-neutral-800 text-neutral-400 hover:text-white"
-                          title="Rename"
+                          title="Rename conversation"
                         >
                           <Pencil size={12} />
                         </button>
                         <button
                           onClick={(e) => handleDeleteSession(e, session.id)}
                           className="p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-400"
-                          title="Delete"
+                          title="Delete conversation"
                         >
                           <Trash2 size={12} />
                         </button>
@@ -409,11 +484,9 @@ export const AIChatCard = () => {
         </div>
       </GlassCard>
 
-      {/* ================= MAIN CHAT INTERFACE ================= */}
-      <GlassCard
-        className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90 h-full overflow-hidden"
-      >
-        {/* Header */}
+      {/* ================= MAIN CHAT ================= */}
+      <GlassCard className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90 h-full overflow-hidden">
+        {/* HEADER */}
         <div className="mb-3 flex shrink-0 items-center justify-between border-b border-neutral-800/80 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20">
@@ -433,8 +506,15 @@ export const AIChatCard = () => {
           </div>
         </div>
 
-        {/* Scrollable Message Box */}
-        <div className="flex-1 min-h-0 space-y-4 pr-2 overflow-y-auto overflow-x-hidden">
+        {/* SCROLLABLE MESSAGE AREA */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 min-h-0 space-y-4 pr-3 overflow-y-scroll overflow-x-hidden"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(255,255,255,0.2) transparent",
+          }}
+        >
           {messages.map((message) => (
             <motion.div
               key={message.id}
@@ -451,6 +531,7 @@ export const AIChatCard = () => {
                     : "bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 text-white"
                 }`}
               >
+                {/* ATTACHMENT */}
                 {message.attachment_name && (
                   <div className="mb-2 p-2 rounded-xl bg-black/40 border border-white/10 flex items-center gap-2">
                     {message.attachment_url?.startsWith("data:image") ? (
@@ -458,6 +539,12 @@ export const AIChatCard = () => {
                         src={message.attachment_url}
                         alt="attachment"
                         className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                      />
+                    ) : message.attachment_url?.startsWith("data:video") ? (
+                      <video
+                        src={message.attachment_url}
+                        controls
+                        className="w-24 h-16 object-cover rounded-lg border border-white/10"
                       />
                     ) : (
                       <FileText size={16} className="text-cyan-400" />
@@ -467,7 +554,58 @@ export const AIChatCard = () => {
                     </span>
                   </div>
                 )}
-                <div className="whitespace-pre-wrap">{message.content}</div>
+
+                {/* EDITABLE USER MESSAGE */}
+                {editingMessageId === message.id ? (
+                  <div className="space-y-2">
+                    <textarea
+                      autoFocus
+                      value={editingMessageText}
+                      onChange={(e) => setEditingMessageText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleSaveMessageEdit(message.id);
+                        }
+                        if (e.key === "Escape") {
+                          handleCancelMessageEdit();
+                        }
+                      }}
+                      rows={3}
+                      className="w-full resize-none rounded-xl border border-cyan-500/40 bg-black/30 p-2 text-xs text-white outline-none focus:border-cyan-400"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={handleCancelMessageEdit}
+                        className="rounded-lg px-2 py-1 text-[10px] text-neutral-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => void handleSaveMessageEdit(message.id)}
+                        className="rounded-lg bg-cyan-500/20 px-3 py-1 text-[10px] text-cyan-300 hover:bg-cyan-500/30 transition"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="group/message relative">
+                    <div className="whitespace-pre-wrap pr-7">
+                      {message.content}
+                    </div>
+
+                    {message.role === "user" && (
+                      <button
+                        onClick={() => handleStartEditMessage(message)}
+                        className="absolute right-0 top-0 opacity-0 group-hover/message:opacity-100 transition p-1 text-neutral-500 hover:text-cyan-400 cursor-pointer"
+                        title="Edit message"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
@@ -484,39 +622,44 @@ export const AIChatCard = () => {
               {error}
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Upload File Preview Chip */}
+        {/* ATTACHED FILE PREVIEW */}
         {attachedFile && (
           <div className="my-2 shrink-0 p-2 bg-neutral-900 border border-cyan-500/30 rounded-xl flex items-center justify-between text-xs text-neutral-300">
             <div className="flex items-center gap-2 truncate">
-              {attachedFile.previewUrl ? (
+              {attachedFile.previewUrl?.startsWith("data:image") ? (
                 <img
                   src={attachedFile.previewUrl}
                   alt="preview"
                   className="w-7 h-7 object-cover rounded"
                 />
+              ) : attachedFile.previewUrl?.startsWith("data:video") ? (
+                <Video size={16} className="text-cyan-400" />
               ) : (
                 <FileText size={16} className="text-cyan-400" />
               )}
               <span className="truncate">{attachedFile.file.name}</span>
             </div>
+
             <button
               onClick={() => setAttachedFile(null)}
               className="p-1 text-neutral-400 hover:text-white cursor-pointer"
+              title="Remove attachment"
             >
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Pinned Input Bar */}
+        {/* PINNED INPUT BAR */}
         <div className="pt-2 shrink-0">
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.pdf,.doc,.docx,.txt"
+            accept="image/*,video/*,.pdf,.doc,.docx,.txt"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -526,7 +669,7 @@ export const AIChatCard = () => {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="absolute left-3 p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer"
-              title="Attach Image or Document"
+              title="Attach image, video or document"
             >
               <Paperclip size={16} />
             </button>
@@ -541,7 +684,7 @@ export const AIChatCard = () => {
                 }
               }}
               rows={1}
-              placeholder="Ask anything, query your documents, or attach an image..."
+              placeholder="Ask anything, query your documents, or attach an image, video or file..."
               className="w-full resize-none rounded-xl border border-neutral-800 bg-neutral-950/80 py-3.5 pl-11 pr-12 text-xs text-white outline-none focus:border-cyan-500/50"
             />
 
@@ -549,6 +692,7 @@ export const AIChatCard = () => {
               onClick={() => void sendMessage()}
               disabled={isLoading || (!input.trim() && !attachedFile)}
               className="absolute right-2.5 p-2 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 text-black font-bold disabled:opacity-40 transition cursor-pointer"
+              title="Send message"
             >
               <ArrowRight size={14} />
             </button>
