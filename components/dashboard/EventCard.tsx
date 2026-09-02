@@ -57,12 +57,12 @@ export const EventCard = () => {
     } catch (err: any) {
       console.error("Failed to save event:", err);
       alert(err?.message || "Failed to save event. Please check your connection.");
-    } finally {
-      setIsSubmitting(false);
+       } finally {
+      setLoading(false);
     }
-    }
+  }
 
-    loadEvents();
+  loadEvents();
   }, []);
 
   const handleAddEvent = async () => {
