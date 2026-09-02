@@ -121,6 +121,30 @@ export async function saveSessionChatMessage(
   return data;
 }
 
+export async function updateSessionChatMessage(
+  messageId: string,
+  content: string
+) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .update({ content })
+    .eq("id", messageId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to update chat message:", error);
+    throw error;
+  }
+
+  return data;
+}
+
 // Flat Chat Fallbacks
 export async function fetchUserChatHistory() {
   const supabase = createClient();
@@ -363,26 +387,74 @@ export async function deleteDailyPriority(id: string) {
 
   if (error) console.error("Error deleting priority:", error);
 }
-export async function updateSessionChatMessage(
-  messageId: string,
-  content: string
+
+// ==========================================
+// 5. MEMORIES
+// ==========================================
+
+export async function fetchUserMemories() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("memories")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading memories:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createDatabaseMemory(
+  title: string,
+  type: string = "text",
+  summary: string = ""
 ) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) {
+    throw new Error("You must be logged in to save memories.");
+  }
 
   const { data, error } = await supabase
-    .from("chat_messages")
-    .update({ content })
-    .eq("id", messageId)
-    .eq("user_id", user.id)
+    .from("memories")
+    .insert([
+      {
+        user_id: user.id,
+        title,
+        type,
+        summary,
+        size: "1 MB",
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      },
+    ])
     .select()
     .single();
 
   if (error) {
-    console.error("Failed to update chat message:", error);
+    console.error("Error saving memory:", error);
     throw error;
   }
-
   return data;
+}
+
+export async function deleteDatabaseMemory(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("memories")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error deleting memory:", error);
+  }
 }
