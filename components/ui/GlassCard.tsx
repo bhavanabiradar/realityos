@@ -41,8 +41,7 @@ export const GlassCard = ({
       }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.06), transparent 60%)' }} />
-
-      <div className="relative z-10">{children}</div>
+<div className="relative z-10 flex flex-col h-full min-h-0">{children}</div>
     </motion.div>
   );
 };

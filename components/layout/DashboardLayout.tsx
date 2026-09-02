@@ -39,7 +39,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#07080a] text-white flex flex-col md:flex-row antialiased selection:bg-cyan-500 selection:text-black">
+   <div className="h-screen overflow-hidden bg-[#07080a] text-white flex flex-col md:flex-row antialiased selection:bg-cyan-500 selection:text-black">
       
       {/* Mobile Top Header */}
       <header className="md:hidden flex items-center justify-between px-5 py-3.5 bg-[#0c0d12]/90 backdrop-blur-md border-b border-neutral-800/80 sticky top-0 z-50">
@@ -129,9 +129,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 p-5 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
-        {children}
-      </main>
+      <main className="flex-1 min-h-0 p-5 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
+  {children}
+</main>
     </div>
   );
 }

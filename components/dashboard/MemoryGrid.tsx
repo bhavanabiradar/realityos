@@ -41,12 +41,13 @@ export default function MemoryGrid() {
 
   const handleAddMemory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || isSubmitting) return;
+    const cleanTitle = newTitle.trim();
+    if (!cleanTitle || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       const created = await createDatabaseMemory(
-        newTitle.trim(),
+        cleanTitle,
         newType,
         newSummary.trim() || "Snapshot captured"
       );
@@ -57,8 +58,9 @@ export default function MemoryGrid() {
         setNewSummary("");
         setShowAddModal(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating memory:", error);
+      alert(error?.message || "Failed to save memory. Please check your connection.");
     } finally {
       setIsSubmitting(false);
     }
@@ -67,7 +69,11 @@ export default function MemoryGrid() {
   const handleDeleteMemory = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setMemories((prev) => prev.filter((m) => m.id !== id));
-    await deleteDatabaseMemory(id);
+    try {
+      await deleteDatabaseMemory(id);
+    } catch (err) {
+      console.error("Error deleting memory:", err);
+    }
   };
 
   const getTypeIcon = (type: string) => {
@@ -108,6 +114,7 @@ export default function MemoryGrid() {
             </h3>
           </div>
           <button
+            type="button"
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-1 text-[11px] font-semibold text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 px-2.5 py-1 rounded-lg transition cursor-pointer"
           >
@@ -138,12 +145,13 @@ export default function MemoryGrid() {
                     {getTypeIcon(mem.type)}
                     <span className="capitalize">{mem.type}</span>
                   </span>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-neutral-500">{mem.date}</span>
                     <button
+                      type="button"
                       onClick={(e) => handleDeleteMemory(mem.id, e)}
-                      className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-red-400 transition"
+                      className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-red-400 transition cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -163,7 +171,9 @@ export default function MemoryGrid() {
           <div className="py-10 flex flex-col items-center justify-center text-center text-neutral-500">
             <Sparkles className="w-6 h-6 mb-2 opacity-30 text-purple-400" />
             <p className="text-xs">No memories saved yet.</p>
-            <p className="text-[10px] text-neutral-600 mt-0.5">Capture a memory or idea to sync with your database.</p>
+            <p className="text-[10px] text-neutral-600 mt-0.5">
+              Capture a memory or idea to sync with your database.
+            </p>
           </div>
         )}
       </div>
@@ -179,6 +189,7 @@ export default function MemoryGrid() {
                 <input
                   type="text"
                   required
+                  autoFocus
                   placeholder="e.g., Hackathon Idea Brainstorm"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}

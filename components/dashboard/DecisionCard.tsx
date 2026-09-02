@@ -55,8 +55,8 @@ export const DecisionCard = () => {
       console.error("Failed to save decision:", err);
       alert(err?.message || "Failed to save decision. Please try again.");
     } finally {
-      setIsSubmitting(false);
-    }
+  setLoading(false);
+}
     }
 
     loadDecisions();

@@ -101,8 +101,8 @@ export const EventCard = () => {
       console.error("Failed to save event:", err);
       alert("Failed to save event. Please check your connection.");
     } finally {
-      setIsSubmitting(false);
-    }
+  setLoading(false);
+}
   };
 
   const handleDeleteEvent = async (id: string) => {
