@@ -54,12 +54,12 @@ export const EventCard = () => {
         } else {
           setEvents(getEvents());
         }
-      } catch (err) {
-        console.error("Failed to load events from Supabase:", err);
-        setEvents(getEvents());
-      } finally {
-        setLoading(false);
-      }
+    } catch (err: any) {
+      console.error("Failed to save event:", err);
+      alert(err?.message || "Failed to save event. Please check your connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
     }
 
     loadEvents();

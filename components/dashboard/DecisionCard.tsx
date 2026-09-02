@@ -51,12 +51,12 @@ export const DecisionCard = () => {
         } else {
           setDecisions(getDecisions());
         }
-      } catch (err) {
-        console.error("Failed to load decisions:", err);
-        setDecisions(getDecisions());
-      } finally {
-        setLoading(false);
-      }
+     } catch (err: any) {
+      console.error("Failed to save decision:", err);
+      alert(err?.message || "Failed to save decision. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
     }
 
     loadDecisions();

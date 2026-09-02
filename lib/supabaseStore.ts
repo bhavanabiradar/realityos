@@ -416,8 +416,8 @@ export async function createDatabaseMemory(
   summary: string = ""
 ) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
     throw new Error("You must be logged in to save memories.");
   }
 
@@ -438,7 +438,7 @@ export async function createDatabaseMemory(
 
   if (error) {
     console.error("Error saving memory:", error);
-    throw error;
+    throw new Error(error.message || "Could not save memory to database.");
   }
   return data;
 }
@@ -456,5 +456,141 @@ export async function deleteDatabaseMemory(id: string) {
 
   if (error) {
     console.error("Error deleting memory:", error);
+  }
+}
+
+// ==========================================
+// 6. PLANNER / EVENTS (DATABASE PERSISTENCE)
+// ==========================================
+
+export async function fetchUserEvents() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading events:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createDatabaseEvent(title: string, time: string, location: string = "Workspace") {
+  const supabase = createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error("You must be logged in to create an event.");
+  }
+
+  const { data, error } = await supabase
+    .from("events")
+    .insert([
+      {
+        user_id: user.id,
+        title,
+        time,
+        location,
+        status: "Event",
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Supabase create event error:", error);
+    throw new Error(error.message || "Could not save event to database.");
+  }
+  return data;
+}
+
+export async function deleteDatabaseEvent(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error deleting event:", error);
+  }
+}
+
+// ==========================================
+// 7. DECISIONS (DATABASE PERSISTENCE)
+// ==========================================
+
+export async function fetchUserDecisions() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("decisions")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error loading decisions:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createDatabaseDecision(
+  title: string,
+  category: string = "General",
+  status: string = "Committed"
+) {
+  const supabase = createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    throw new Error("You must be logged in to create a decision.");
+  }
+
+  const { data, error } = await supabase
+    .from("decisions")
+    .insert([
+      {
+        user_id: user.id,
+        title,
+        category,
+        status,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Supabase create decision error:", error);
+    throw new Error(error.message || "Could not save decision to database.");
+  }
+  return data;
+}
+
+export async function deleteDatabaseDecision(id: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("decisions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error deleting decision:", error);
   }
 }
