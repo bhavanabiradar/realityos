@@ -15,7 +15,6 @@ import {
   MessageSquare,
   X,
   Paperclip,
-  Image as ImageIcon,
   FileText,
   Loader2,
   Check,
@@ -64,11 +63,9 @@ export const AIChatCard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Edit session title state
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleText, setEditTitleText] = useState("");
 
-  // Attachment state
   const [attachedFile, setAttachedFile] = useState<{
     file: File;
     previewUrl?: string;
@@ -77,7 +74,7 @@ export const AIChatCard = () => {
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   /* =========================================================
      1. LOAD SESSIONS ON MOUNT
@@ -124,10 +121,7 @@ export const AIChatCard = () => {
 
   const scrollChatBottom = () => {
     setTimeout(() => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop =
-          messagesContainerRef.current.scrollHeight;
-      }
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 60);
   };
 
@@ -162,7 +156,7 @@ export const AIChatCard = () => {
   };
 
   /* =========================================================
-     4. SEND MESSAGE WITH MULTIMODAL & WORKSPACE CONTEXT
+     4. SEND MESSAGE
   ========================================================= */
   const sendMessage = async (promptOverride?: string) => {
     const textToSend = (promptOverride ?? input).trim();
@@ -188,7 +182,6 @@ export const AIChatCard = () => {
     scrollChatBottom();
 
     try {
-      // 1. Save user message to database
       await saveSessionChatMessage(
         currentSessionId,
         "user",
@@ -197,10 +190,8 @@ export const AIChatCard = () => {
         userMsg.attachment_url
       );
 
-      // 2. Fetch live workspace documents to include in prompt context
       const docs = await fetchUserDocuments();
 
-      // 3. API request to Gemini 2.5 Flash
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,7 +221,6 @@ export const AIChatCard = () => {
 
       const replyText = String(data.text).trim();
 
-      // 4. Save Assistant response to database
       const assistantMsg = await saveSessionChatMessage(
         currentSessionId,
         "assistant",
@@ -246,7 +236,6 @@ export const AIChatCard = () => {
         },
       ]);
 
-      // Auto-name "New Chat" after first user prompt
       const currentSession = sessions.find((s) => s.id === currentSessionId);
       if (currentSession && currentSession.title === "New Chat") {
         const smartTitle =
@@ -269,7 +258,7 @@ export const AIChatCard = () => {
   };
 
   /* =========================================================
-     5. RENAME & DELETE ACTIONS
+     5. RENAME & DELETE
   ========================================================= */
   const handleSaveRename = async (sessionId: string) => {
     if (!editTitleText.trim()) {
@@ -297,24 +286,21 @@ export const AIChatCard = () => {
   };
 
   return (
-    <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-      {/* ================= SIDEBAR: CHATGPT STYLE HISTORY ================= */}
+    <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[280px_1fr] h-[720px] max-h-[82vh]">
+      {/* ================= SIDEBAR ================= */}
       <GlassCard
-        className="relative flex flex-col p-4 border-neutral-800/80 bg-[#0d0e14]/90"
-        style={{ height: "640px" }}
+        className="relative flex flex-col p-4 border-neutral-800/80 bg-[#0d0e14]/90 h-full overflow-hidden"
       >
-        {/* New Chat Button */}
         <button
           onClick={startNewChat}
           disabled={isLoading}
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 py-2.5 px-4 text-xs font-bold text-black shadow-lg shadow-cyan-500/10 hover:opacity-95 transition cursor-pointer"
+          className="mb-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 py-2.5 px-4 text-xs font-bold text-black shadow-lg shadow-cyan-500/10 hover:opacity-95 transition cursor-pointer"
         >
           <Plus size={16} />
           <span>New Chat</span>
         </button>
 
-        {/* Live Search Input */}
-        <div className="relative mb-3">
+        <div className="relative mb-3 shrink-0">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
@@ -335,16 +321,14 @@ export const AIChatCard = () => {
           )}
         </div>
 
-        {/* Chat History Header */}
-        <div className="mb-2 flex items-center gap-2 px-1">
+        <div className="mb-2 flex shrink-0 items-center gap-2 px-1">
           <MessageSquare size={13} className="text-cyan-400" />
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
             Conversations
           </span>
         </div>
 
-        {/* Chat Sessions List */}
-        <div className="space-y-1 pr-1 overflow-y-auto flex-1">
+        <div className="space-y-1 pr-1 overflow-y-auto flex-1 min-h-0">
           {filteredSessions.length === 0 ? (
             <div className="rounded-xl border border-neutral-800/50 p-4 text-center text-xs text-neutral-500">
               No conversations found.
@@ -396,7 +380,6 @@ export const AIChatCard = () => {
                         <span className="truncate font-medium">{session.title}</span>
                       </div>
 
-                      {/* Action buttons on hover */}
                       <div className="absolute right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button
                           onClick={(e) => {
@@ -428,11 +411,10 @@ export const AIChatCard = () => {
 
       {/* ================= MAIN CHAT INTERFACE ================= */}
       <GlassCard
-        className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90"
-        style={{ height: "640px" }}
+        className="relative flex flex-col p-5 border-neutral-800/80 bg-[#0c0e14]/90 h-full overflow-hidden"
       >
         {/* Header */}
-        <div className="mb-3 flex items-center justify-between border-b border-neutral-800/80 pb-3">
+        <div className="mb-3 flex shrink-0 items-center justify-between border-b border-neutral-800/80 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20">
               <Sparkles size={16} />
@@ -451,11 +433,8 @@ export const AIChatCard = () => {
           </div>
         </div>
 
-        {/* Chat Messages Container */}
-        <div
-          ref={messagesContainerRef}
-          className="flex-1 space-y-4 pr-2 overflow-y-auto"
-        >
+        {/* Scrollable Message Box */}
+        <div className="flex-1 min-h-0 space-y-4 pr-2 overflow-y-auto overflow-x-hidden">
           {messages.map((message) => (
             <motion.div
               key={message.id}
@@ -472,7 +451,6 @@ export const AIChatCard = () => {
                     : "bg-gradient-to-r from-cyan-600/20 to-blue-600/20 border border-cyan-500/30 text-white"
                 }`}
               >
-                {/* Render Attachment Badge / Preview */}
                 {message.attachment_name && (
                   <div className="mb-2 p-2 rounded-xl bg-black/40 border border-white/10 flex items-center gap-2">
                     {message.attachment_url?.startsWith("data:image") ? (
@@ -506,11 +484,12 @@ export const AIChatCard = () => {
               {error}
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Upload File Preview Chip */}
         {attachedFile && (
-          <div className="my-2 p-2 bg-neutral-900 border border-cyan-500/30 rounded-xl flex items-center justify-between text-xs text-neutral-300">
+          <div className="my-2 shrink-0 p-2 bg-neutral-900 border border-cyan-500/30 rounded-xl flex items-center justify-between text-xs text-neutral-300">
             <div className="flex items-center gap-2 truncate">
               {attachedFile.previewUrl ? (
                 <img
@@ -525,15 +504,15 @@ export const AIChatCard = () => {
             </div>
             <button
               onClick={() => setAttachedFile(null)}
-              className="p-1 text-neutral-400 hover:text-white"
+              className="p-1 text-neutral-400 hover:text-white cursor-pointer"
             >
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Input Bar with Attachment & Send */}
-        <div className="pt-2">
+        {/* Pinned Input Bar */}
+        <div className="pt-2 shrink-0">
           <input
             ref={fileInputRef}
             type="file"
