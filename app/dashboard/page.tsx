@@ -18,6 +18,7 @@ import {
   ShieldCheck, 
   Clock
 } from "lucide-react";
+import { checkAndSendInactivityReminder } from "@/lib/notifications";
 
 export default function DashboardPage() {
   const [userName, setUserName] = useState<string>("there");
@@ -222,3 +223,21 @@ export default function DashboardPage() {
     </DashboardLayout>
   );
 }
+// --- Inactivity & Streak Notification Check ---
+  useEffect(() => {
+    async function verifyActivity() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        // Update last active timestamp on every visit
+        await supabase
+          .from("profiles")
+          .update({ last_active_at: new Date().toISOString() })
+          .eq("email", user.email);
+
+        // Check if reminder needs to be sent
+        checkAndSendInactivityReminder(user.email);
+      }
+    }
+    verifyActivity();
+  }, []);
