@@ -18,7 +18,7 @@ import {
   ShieldCheck, 
   Clock
 } from "lucide-react";
-import { checkAndSendInactivityReminder } from "@/lib/notifications";
+
 
 export default function DashboardPage() {
   const [userName, setUserName] = useState<string>("there");
@@ -236,7 +236,7 @@ export default function DashboardPage() {
           .eq("email", user.email);
 
         // Check if reminder needs to be sent
-        checkAndSendInactivityReminder(user.email);
+         
       }
     }
     verifyActivity();
