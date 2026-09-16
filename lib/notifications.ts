@@ -2,27 +2,25 @@
 import { createClient } from "@/lib/supabase/client";
 
 export async function checkAndSendInactivityReminder(userEmail: string) {
+  if (!userEmail) return;
   const supabase = createClient();
 
   try {
-    // Fetch user's last activity or profile update
-    const { data: profile, error } = await supabase
+    // Safely check user profile without crashing if columns don't exist yet
+    const { data: profile } = await supabase
       .from("profiles")
       .select("last_active_at, streak_count")
       .eq("email", userEmail)
-      .single();
+      .maybeSingle();
 
-    if (error || !profile) return;
+    if (!profile) return;
 
     const lastActive = new Date(profile.last_active_at || Date.now());
     const now = new Date();
     const diffDays = Math.abs(now.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24);
 
-    // If inactive for 2 or more days, trigger notification logic
+    // If inactive for 2 or more days, trigger notification
     if (diffDays >= 2) {
-      console.log("User inactive for 2+ days. Triggering reminder notification...");
-      
-      // Call Supabase Edge Function or API route to dispatch Gmail notification
       await fetch("/api/send-notification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,9 +29,10 @@ export async function checkAndSendInactivityReminder(userEmail: string) {
           streak: profile.streak_count || 0,
           type: "INACTIVITY_REMINDER",
         }),
-      });
+      }).catch(() => {}); // Catch fetch errors silently so UI never breaks
     }
   } catch (err) {
-    console.error("Error checking notification status:", err);
+    // Silently catch background errors so app execution is never interrupted
+    console.log("Notification check skipped:", err);
   }
 }
