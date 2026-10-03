@@ -132,8 +132,7 @@ export function TasksCard() {
   const completedCount = tasks.filter((t) => t.completed).length;
   const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-  return (
-    <div className="bg-[#111318]/90 border border-neutral-800/80 rounded-3xl p-5 flex flex-col justify-between h-full min-h-[380px]">
+  return (<div className="bg-[#111318]/90 border border-neutral-800/80 rounded-3xl p-5 flex flex-col h-[360px] md:h-[380px] min-h-0">
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
@@ -165,7 +164,7 @@ export function TasksCard() {
             <span className="text-xs">Loading priorities...</span>
           </div>
         ) : tasks.length > 0 ? (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+<div className="space-y-2 h-48 max-h-48 overflow-y-auto pr-1">
             {tasks.map((task, idx) => (
               <div
                 key={task.id}
