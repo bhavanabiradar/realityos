@@ -1,65 +1,173 @@
-# RealityOS — Landing Page
+# RealityOS — Your Life, Integrated 🧠
 
-Premium marketing landing page for **RealityOS**, an AI-powered Life Operating
-System. Built for the Google Build with Gemini XPRIZE Hackathon.
+RealityOS is an AI-powered personal productivity workspace designed to bring planning, tasks, habits, memory, documents, decisions, and AI assistance into one integrated system.
 
-## Stack
+Instead of using separate tools for different parts of daily life, RealityOS provides a single workspace where users can organize their work, interact with AI, manage information, and make better decisions.
 
-- **Next.js 15** (App Router) + **React 19**
-- **TypeScript**
-- **Tailwind CSS**
-- **Framer Motion** for scroll/entry animations
-- **lucide-react** for icons
+> Built as a personal full-stack project to explore AI application development, productivity systems, and user-centered software design.
 
-## Getting started
+---
 
-```bash
-npm install
-npm run dev
-```
+## ✨ Features
 
-Open [http://localhost:3000](http://localhost:3000).
+### 🤖 Reality AI Assistant
 
-## Project structure
+An AI-powered workspace assistant integrated with Gemini.
 
-```
-realityos/
-├─ app/
-│  ├─ layout.tsx        # Root layout, fonts, metadata
-│  ├─ page.tsx           # Composes all landing sections
-│  └─ globals.css        # Design tokens, aurora signature, base styles
-├─ components/
-│  ├─ Navbar.tsx
-│  ├─ Hero.tsx
-│  ├─ Features.tsx        # Bento grid of 5 feature cards
-│  ├─ HowItWorks.tsx       # 3-step process
-│  ├─ DemoPreview.tsx      # Fake dashboard mockup
-│  ├─ Pricing.tsx
-│  ├─ AboutCta.tsx
-│  ├─ Footer.tsx
-│  └─ ui/
-│     ├─ Button.tsx
-│     ├─ Logo.tsx
-│     └─ Reveal.tsx        # Scroll-reveal animation wrapper
-├─ lib/
-│  └─ utils.ts             # `cn` classname helper
-├─ tailwind.config.ts       # Design tokens: colors, fonts, animation
-└─ package.json
-```
+- Conversational AI chat
+- Persistent conversation history
+- Document-aware conversations
+- PDF/document analysis
+- Image and file input
+- Mathematical and coding queries
+- Workspace assistance
+- Context-aware responses
 
-## Design system
+---
 
-- **Colors**: white surfaces, near-black ink (`#0B0B14`), indigo→purple brand
-  gradient (`#4F46E5` → `#9333EA`).
-- **Type**: Inter Tight (display) + Inter (body) + JetBrains Mono (eyebrows,
-  labels, data).
-- **Signature element**: the "aurora" — a slow-drifting blurred gradient mesh
-  behind the hero and closing CTA, representing RealityOS's ambient,
-  always-on understanding of your life.
-- Respects `prefers-reduced-motion`.
+### ✅ To-Do List & Habit Tracker
 
-## Notes
+A productivity module for managing daily priorities and building consistent habits.
 
-- All copy is placeholder/demo content — swap in real product copy, auth
-  flows, and Stripe/pricing integration before shipping.
-- Nav links point to in-page anchors (`#features`, `#how-it-works`, etc.).
+- Create and manage tasks
+- Priority-based task management
+- Daily priorities
+- Habit tracking
+- Daily, weekly, and monthly views
+- Habit streak tracking
+- Completion percentage
+- Dynamic Life Score
+
+---
+
+### 🧠 Memory Center
+
+A dedicated space for storing important information, ideas, and personal memories.
+
+- Save memories
+- Organize stored information
+- Persistent database storage
+- User-specific memory isolation
+
+---
+
+### 📄 Smart Documents
+
+A document workspace designed to make working with study and project material easier.
+
+- Upload documents
+- Store documents in the workspace
+- Access uploaded files through the AI assistant
+- Ask questions about documents
+- Summarize and analyze document content
+- Useful for assignments, research papers, project documents, and reference material
+
+---
+
+### 📅 Predictive Planner
+
+A scheduling workspace for organizing time around different types of activities.
+
+- Create scheduled events
+- Time-based planning
+- Study/work scheduling
+- Location and event type tracking
+- Structured daily planning
+
+---
+
+### ⚖️ Decision Engine
+
+A structured system for recording and evaluating important decisions.
+
+- Log decisions
+- Record decision outcomes
+- Review previous decisions
+- Track decision-making patterns
+- Evaluate decision accuracy over time
+
+---
+
+### 🚨 Emergency Protocol Hub
+
+An emergency-oriented module designed to provide quick access to predefined emergency workflows.
+
+- SOS functionality
+- Emergency contact workflows
+- Emergency alerts
+- Priority-based emergency actions
+
+---
+
+### 🔐 Authentication & User Isolation
+
+RealityOS supports user-specific workspaces through authentication and database-level user management.
+
+- Sign up
+- Sign in
+- Password authentication
+- Forgot-password flow
+- User-specific data
+- Isolated workspace data
+- Authenticated sessions
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Lucide React
+
+### Backend & Data
+
+- Supabase
+- Supabase Authentication
+- Supabase Database
+
+### AI
+
+- Google Gemini API
+- AI application development
+- Document-aware AI interactions
+
+### Development & Deployment
+
+- Git
+- GitHub
+- Vercel
+
+---
+
+## 🏗️ Architecture
+
+RealityOS follows a modern full-stack web application architecture.
+
+```text
+User
+ │
+ ▼
+Next.js / React Interface
+ │
+ ├── Productivity Modules
+ │    ├── To-Do & Habits
+ │    ├── Planner
+ │    ├── Decisions
+ │    └── Emergency
+ │
+ ├── AI Layer
+ │    └── Gemini API
+ │
+ ├── Document Layer
+ │    └── Document Upload & Analysis
+ │
+ └── Supabase
+      ├── Authentication
+      ├── User Data
+      ├── Memories
+      ├── Tasks
+      └── Workspace Data
